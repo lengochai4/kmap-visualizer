@@ -6,66 +6,70 @@
 #include <string>
 #include <sstream>
 #include <map>
+#include <algorithm>
+#include <iostream>
+#include <math.h>
 using namespace std;
 
-vector<char> loaibien = { 'x','y','z','w' };
-int slbien;
 vector<int> dsvitri; // danh sách dữ liệu cho thuật toán Kmap (ô kề)
+int slbien;
 
-//Hàm chuyển đổi toán tử sang vị trí trong K-map
 int chuyendoi(const string& toantu)
 {
-    vector<int> bits(slbien, 0);
-
-    for (int i = 0; i < (int)toantu.size(); i++)
-    {
-        char c = toantu[i];
-        if (c == ' ' || c == '-') continue;
-        int val = 1;
-
-        for (int v = 0; v < slbien; v++)
-        {
-            if (c == loaibien[v])
-            {
-                if (i > 0 && toantu[i - 1] == '-') val = 0; // phủ định dạng -x
-                bits[v] = val;
+    string toantureal = "";
+    for (int i = 0; i < toantu.length(); i++) {
+        if (toantu[i] != ' ') toantureal += toantu[i];
+    }
+    //x-yz
+    vector<int> bits;
+    for (int i = 0; i < toantureal.length(); i++) {
+        if (toantureal[i] != '-') {
+            if (i > 0) {
+                if (toantureal[i - 1] == '-') bits.push_back(0);
+                else if (toantureal[i - 1] != '-') bits.push_back(1);
             }
+            //trường hợp i==0
+            else bits.push_back(1);
         }
     }
-    // chuyển bit thành vị trí
-    int vitri = 0;
-    for (int i = 0; i < slbien; i++) 
-    {
-        vitri = (vitri << 1) | bits[i];
-    }
-    return vitri;
-}
 
-//Hàm xử lý biểu thức
-void xuly(const string& bieuthuc) 
-{
+    //chuyển từ bit sang số
+    int num = 0;
+    int j = 0;
+    for (int i = bits.size() - 1; i >= 0; i--) {
+        num += bits[j] * pow(2, i);
+        j++;
+    }
+    return num;
+}
+void xuly(const string& bieuthuc) {
     slbien = 0;
     dsvitri.clear();
-
-    map<char, bool> ktxuathien = { {'x',false}, {'y',false}, {'z',false}, {'w',false} };
-    for (char c : bieuthuc) 
-    {
-        for (int v = 0; v < 4; v++) 
-        {
-            if (c == loaibien[v] && !ktxuathien[c]) 
-            {
-                slbien++;
-                ktxuathien[c] = true;
-            }
+    vector<char> bien;
+    for (char c : bieuthuc) {
+        if ((find(bien.begin(), bien.end(), c) == bien.end()) && c != ' ' && c != '+' && c != '-') {
+            slbien++;
+            bien.push_back(c);
         }
     }
 
     stringstream ss(bieuthuc);
     string toantu;
-    while (getline(ss, toantu, '+')) 
+    while (getline(ss, toantu, '+'))
     {
         if (!toantu.empty()) dsvitri.push_back(chuyendoi(toantu));
     }
+    cout << slbien << endl;
+}
+
+int main() {
+    string input = "";
+    getline(cin, input);
+    xuly(input);
+    for (int x : dsvitri) {
+        cout << x << endl;
+    }
+
 }
 
 // Lớp giao diện chính
