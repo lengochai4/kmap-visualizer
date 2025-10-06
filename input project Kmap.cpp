@@ -249,188 +249,151 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
 
 
 //====================RENDER SANG HÌNH ẢNH====================
-// kiểm tra coi việc mở file có lỗi không 
+// Kiểm tra file tồn tại
 bool kiemtrafiletontai(const string& path) {
-    ifstream mofile(path);
-    return mofile.good();
+    ifstream f(path);
+    return f.good();
 }
 
-// Tách từ tích các tổng ra thành các cụm tích nhỏ để xử lý 
+// Tách chuỗi theo ký tự
 vector<string> tachchuoi(const string& s, char phancach) {
-    vector<string> daycacchuoicon;
-    string chuoicon;
+    vector<string> out;
+    string tmp;
     for (char c : s) {
         if (c == phancach) {
-            if (!chuoicon.empty()) daycacchuoicon.push_back(chuoicon);
-            chuoicon = "";
+            if (!tmp.empty()) out.push_back(tmp);
+            tmp = "";
         }
-        else chuoicon += c;
+        else tmp += c;
     }
-    if (!chuoicon.empty()) daycacchuoicon.push_back(chuoicon);
-    return daycacchuoicon;
+    if (!tmp.empty()) out.push_back(tmp);
+    return out;
 }
 
-// CHỈNH SỬA: Đã cập nhật hàm makeDot để cấu trúc sơ đồ mạch rõ ràng hơn (AND-OR 2 tầng)
+// Tạo file .dot cho Graphviz
 bool makeDot(string expr, string dotF, string imgF) {
     ofstream f(dotF);
-    if (!f.is_open()) { cerr << "không thể mở\n"; return 0; }    //kiểm tra xem file có mở được không 
+    if (!f.is_open()) return false;
 
-    // Đặt hướng đồ thị (trái sang phải), cỡ chữ và định nghĩa nút
-    f << "digraph G{\nrankdir=LR;\nnode[fontsize=12, style=filled, fillcolor=lightblue];\n";
+    f << "digraph G {\n";
+    f << "rankdir=LR; splines=ortho; nodesep=0.6; ranksep=0.8;\n";
+    f << "node[fontsize=12, style=filled, fillcolor=lightblue];\n";
 
-    // 1. ĐỊNH NGHĨA TẤT CẢ CÁC BIẾN ĐẦU VÀO MỘT LẦN (để Graphviz sắp xếp gọn gàng hơn)
-    for (char var : dsbien) {
-        f << " " << var << "[shape=circle, label=\"" << var << "\", fillcolor=\"#DDA0DD\"];\n"; // Input style
-    }
+    for (char var : dsbien)
+        f << var << "[shape=circle, label=\"" << var << "\", fillcolor=\"#DDA0DD\"];\n";
 
-    int cNOT = 0, cAND = 0;         //Đếm để đặt tên các biến nút khác nhau 
-    auto chuoi = tachchuoi(expr, '+');
+    int cNOT = 0, cAND = 0;
+    auto terms = tachchuoi(expr, '+');
     vector<string> ANDs;
 
-    // 2. XỬ LÝ TỪNG TOÁN TỬ TÍCH (Product Term)
-    for (auto& t : chuoi) {
+    for (auto& t : terms) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
 
         cAND++;
         string aN = "A" + to_string(cAND);
-        // Định nghĩa cổng AND
-        f << " " << aN << "[shape=none,image=\"" << imgF << "\\AND.png\"];\n";
+        f << aN << "[shape=none,image=\"" << imgF << "\\AND.png\"];\n";
 
-        // 2b. Kết nối các literal (biến hoặc biến đảo) vào cổng AND
-        for (size_t i = 0; i < t.size(); i++) {
+        for (int i = 0; i < t.size(); i++) {
             char c = t[i];
             if (c == '-') continue;
-            string var(1, c); // Tên biến gốc (ví dụ: "A")
+            string var(1, c);
 
             if (i > 0 && t[i - 1] == '-') {
-                // Biến đảo (Complemented, ví dụ: -A)
                 cNOT++;
                 string nN = "N" + to_string(cNOT);
-
-                // Định nghĩa cổng NOT (nút trung gian)
-                f << " " << nN << "[shape=none,image=\"" << imgF << "\\NOT.png\"];\n";
-
-                // Kết nối Biến -> NOT
-                f << var << "->" << nN << " [label=\"\"];\n";
-
-                // Kết nối NOT -> AND
-                f << nN << "->" << aN << " [label=\"\"];\n";
+                f << nN << "[shape=none,image=\"" << imgF << "\\NOT.png\"];\n";
+                f << var << "->" << nN << ";\n";
+                f << nN << "->" << aN << ";\n";
             }
-            else {
-                // Biến không đảo (ví dụ: A)
-                // Kết nối Biến -> AND trực tiếp
-                f << var << "->" << aN << " [label=\"\"];\n";
-            }
+            else f << var << "->" << aN << ";\n";
         }
         ANDs.push_back(aN);
     }
 
-    // 3. ĐỊNH NGHĨA VÀ KẾT NỐI CỔNG OR CUỐI CÙNG
-    // Sử dụng màu sắc khác cho cổng OR và Output
-    f << " OR[shape=none,image=\"" << imgF << "\\OR.png\"];\n";
-    for (auto& x : ANDs) {
-        f << x << "->OR [label=\"\"];\n"; // Kết nối đầu ra của tất cả các cổng AND vào cổng OR
+    if (ANDs.size() == 1) {
+        f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
+        f << ANDs[0] << "->F;\n";
+    }
+    else {
+        f << "OR[shape=none,image=\"" << imgF << "\\OR.png\"];\n";
+        for (auto& x : ANDs) f << x << "->OR;\n";
+        f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
+        f << "OR->F;\n";
     }
 
-    // 4. ĐỊNH NGHĨA VÀ KẾT NỐI ĐẦU RA F
-    f << " F[shape=doublecircle,label=\"F\", fillcolor=\"#FFA07A\"];\nOR->F [label=\"\"];\n}\n";
+    f << "}\n";
     f.close();
-
-    cout << "hoàn thành nút: " << dotF << "\n";
-    return 1;
+    return true;
 }
 
-
-
-// ========================= RENDER RA MẠCH (PNG) ===================================
-bool doGraph(const string& exe, const string& dotF, const string& pngF)
-{
+// Gọi Graphviz để render PNG
+bool doGraph(const string& exe, const string& dotF, const string& pngF) {
     if (!kiemtrafiletontai(exe) || !kiemtrafiletontai(dotF)) return false;
 
     string cmd = "\"" + exe + "\" -Tpng \"" + dotF + "\" -o \"" + pngF + "\"";
+    vector<char> buf(cmd.begin(), cmd.end());
+    buf.push_back('\0');
 
     STARTUPINFOA si{};
     PROCESS_INFORMATION pi{};
     si.cb = sizeof(si);
     si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE; // ẩn cửa sổ
+    si.wShowWindow = SW_HIDE;
 
-    BOOL ok = CreateProcessA(
-        NULL,        //chạy file exe ở đây luôn khỏi tìm 
-        cmd.data(),  // nơi chứa địa chỉ file exe 
-        NULL,        // thuộc tính bảo mật
-        NULL,        // thuộc tính bảo mật
-        FALSE,       // khởi chạy các file hay tài nguyên khác trong main vì chỉ cần chạy tool trong dot.exe nên không cần tích hợp để false (tắt)
-        0,           // không cần đặt cờ để đưa ra cửa sổ 
-        NULL,        // không cần gọi biến môi trường 
-        NULL,
-        &si, &pi
-    );
+    BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE,
+        CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
-    if (!ok) return false;
+    if (!ok) {
+        cerr << "CreateProcessA failed, error: " << GetLastError() << endl;
+        return false;
+    }
 
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-
     return kiemtrafiletontai(pngF);
 }
 
-
-//====================CODE GIAO DIỆN WINDOW (SỬ DỤNG WXWIDGETS)====================
-class MyFrame : public wxFrame
-{
+// ===========================================================================
+// Giao diện wxWidgets
+class MyFrame : public wxFrame {
 public:
-    wxTextCtrl* o_nhap;                // ô nhập biểu thức
-    wxTextCtrl* o_bieuthuc_rutgon;     // ô hiển thị biểu thức rút gọn
-    wxStaticBitmap* anh_mach;          // vùng hiển thị mạch logic (ảnh)
+    wxTextCtrl* o_nhap;
+    wxTextCtrl* o_bieuthuc_rutgon;
+    wxStaticBitmap* anh_mach;
 
-    MyFrame()
-        : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(800, 600))
-    {
+    MyFrame() : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(900, 600)) {
         Maximize(true);
-        wxPanel* bang = new wxPanel(this, -1);
+        wxPanel* panel = new wxPanel(this);
 
-        // Tạo sizer chính theo chiều dọc
-        wxBoxSizer* sapdoc = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
+        line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        o_nhap = new wxTextCtrl(panel, -1, "");
+        line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
+        mainSizer->Add(line1, 0, wxEXPAND | wxALL, 10);
 
-        // Hàng nhập biểu thức
-        wxBoxSizer* sapngang1 = new wxBoxSizer(wxHORIZONTAL);
-        sapngang1->Add(new wxStaticText(bang, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-        o_nhap = new wxTextCtrl(bang, -1, "");
-        sapngang1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
-        sapdoc->AddSpacer(20);
-        sapdoc->Add(sapngang1, 0, wxEXPAND | wxALL, 10);
+        wxButton* nut = new wxButton(panel, -1, "Tinh toan");
+        nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
+        mainSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
-        // Nút tính toán
-        wxBoxSizer* sapngang2 = new wxBoxSizer(wxHORIZONTAL);
-        wxButton* nut_tinh = new wxButton(bang, -1, "Tinh toan");
-        nut_tinh->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
-        sapngang2->AddStretchSpacer(1);
-        sapngang2->Add(nut_tinh, 0, wxALL, 5);
-        sapngang2->AddStretchSpacer(1);
-        sapdoc->Add(sapngang2, 0, wxEXPAND | wxALL, 10);
+        wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
+        line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
+        line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
+        mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
 
-        // Biểu thức rút gọn
-        wxBoxSizer* sapngang3 = new wxBoxSizer(wxHORIZONTAL);
-        sapngang3->Add(new wxStaticText(bang, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-        o_bieuthuc_rutgon = new wxTextCtrl(bang, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
-        sapngang3->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
-        sapdoc->Add(sapngang3, 0, wxEXPAND | wxALL, 10);
+        mainSizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
+        wxImage img(400, 300);
+        img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
+        anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
+        mainSizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
 
-        // Mạch logic
-        sapdoc->Add(new wxStaticText(bang, -1, "Mach logic:"), 0, wxALL, 15);
-        wxImage img(200, 150);
-        img.SetRGB(wxRect(0, 0, 200, 150), 255, 255, 255);
-        anh_mach = new wxStaticBitmap(bang, -1, wxBitmap(img));
-        sapdoc->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
-
-        bang->SetSizer(sapdoc);
+        panel->SetSizer(mainSizer);
     }
 
-    void OnCalculate(wxCommandEvent& event)
-    {
+    void OnCalculate(wxCommandEvent&) {
         string input = o_nhap->GetValue().ToStdString();
         xuly(input);
         auto kmap = KMap_Transformation(dsvitri);
@@ -438,172 +401,51 @@ public:
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        // ===================== RENDER TRỰC TIẾP VỚI PNG =====================
-        wxImage imgAND(R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images\AND.png)");
-        wxImage imgOR(R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images\OR.png)");
-        wxImage imgNOT(R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images\NOT.png)");
+        string exePath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\bin\dot.exe)";
+        string dotPath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.dot)";
+        string pngPath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.png)";
+        string imgFolder = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images)";
 
-        if (!imgAND.IsOk() || !imgOR.IsOk() || !imgNOT.IsOk()) {
-            wxMessageBox("Không load được file PNG cổng!");
+        if (!makeDot(ans, dotPath, imgFolder)) {
+            wxMessageBox("Không thể tạo .dot!");
+            return;
+        }
+        if (!doGraph(exePath, dotPath, pngPath)) {
+            wxMessageBox("Không render được PNG!");
             return;
         }
 
-        int w = 1000, h = 600; // Tăng kích thước canvas
-        wxBitmap bmp(w, h);
-        wxMemoryDC dc(bmp);
-        dc.SetBackground(*wxWHITE_BRUSH);
-        dc.Clear();
-
-        auto terms = tachchuoi(ans, '+');
-
-        // Xóa các phần tử rỗng
-        terms.erase(std::remove_if(terms.begin(), terms.end(),
-            [](const string& s) { return s.empty(); }),
-            terms.end());
-
-        if (terms.empty()) {
-            dc.DrawText("No terms to display", 50, 50);
-            anh_mach->SetBitmap(bmp);
-            anh_mach->Refresh();
+        Sleep(200);
+        if (!fs::exists(pngPath)) {
+            wxMessageBox("Không tìm thấy file PNG!");
             return;
         }
 
-        vector<wxPoint> andOutputs;
-        int startX = 50;
-        int startY = 50;
-        int maxTermHeight = 0;
-
-        // Tính toán layout trước
-        vector<int> termHeights;
-        for (auto& term : terms) {
-            int termInputs = 0;
-            for (size_t i = 0; i < term.size(); i++) {
-                if (term[i] != '-') termInputs++;
-            }
-            int termHeight = std::max(imgAND.GetHeight(), termInputs * 20 + 10);
-            termHeights.push_back(termHeight);
-            maxTermHeight = std::max(maxTermHeight, termHeight);
+        wxImage img(pngPath);
+        if (!img.IsOk()) {
+            wxMessageBox("Không đọc được ảnh!");
+            return;
         }
 
-        // Vẽ các cổng AND
-        for (size_t idx = 0; idx < terms.size(); idx++) {
-            auto& term = terms[idx];
-            term.erase(remove_if(term.begin(), term.end(), ::isspace), term.end());
-            if (term.empty()) continue;
-
-            int andX = startX;
-            int andY = startY + (idx * (maxTermHeight + 40)); // Khoảng cách đều giữa các AND
-
-            wxBitmap bmpAND(imgAND);
-            dc.DrawBitmap(bmpAND, andX, andY, true);
-
-            // Vẽ input lines và labels
-            vector<int> inputYs;
-            int termInputs = 0;
-
-            // Đếm số input thực tế (bỏ qua dấu '-')
-            for (size_t i = 0; i < term.size(); i++) {
-                if (term[i] != '-') {
-                    termInputs++;
-                    inputYs.push_back(andY + 10 + (termInputs - 1) * 20);
-                }
-            }
-
-            // Vẽ đường input và labels
-            int inputIndex = 0;
-            for (size_t i = 0; i < term.size(); i++) {
-                char c = term[i];
-                if (c == '-') continue;
-
-                int inputY = inputYs[inputIndex];
-
-                // Vẽ đường input
-                dc.DrawLine(andX - 40, inputY, andX, inputY);
-
-                // Vẽ label biến
-                string label = "";
-                if (i > 0 && term[i - 1] == '-') {
-                    label = "-" + string(1, c);
-                }
-                else {
-                    label = string(1, c);
-                }
-                dc.DrawText(label, andX - 60, inputY - 8);
-
-                // Vẽ cổng NOT nếu cần
-                if (i > 0 && term[i - 1] == '-') {
-                    int notX = andX - 35;
-                    int notY = inputY - imgNOT.GetHeight() / 2;
-                    wxBitmap bmpNOT(imgNOT);
-                    dc.DrawBitmap(bmpNOT, notX, notY, true);
-
-                    // Điều chỉnh đường kết nối NOT->AND
-                    dc.DrawLine(notX + imgNOT.GetWidth(), inputY, andX, inputY);
-                    dc.DrawLine(notX, inputY, notX + imgNOT.GetWidth() / 2, inputY);
-                }
-
-                inputIndex++;
-            }
-
-            // Lưu vị trí output của AND
-            andOutputs.push_back(wxPoint(andX + imgAND.GetWidth(), andY + imgAND.GetHeight() / 2));
-        }
-
-        // Vẽ cổng OR - đặt ở giữa chiều dọc
-        int orX = startX + 300;
-        int orY = startY + (terms.size() * (maxTermHeight + 40)) / 2 - imgOR.GetHeight() / 2;
-        wxBitmap bmpOR(imgOR);
-        dc.DrawBitmap(bmpOR, orX, orY, true);
-
-        // Nối các AND -> OR
-        int orInputY = orY + imgOR.GetHeight() / 2;
-        for (auto& p : andOutputs) {
-            // Vẽ đường cong hoặc đường thẳng có góc
-            int midX1 = p.x + 50;
-            int midX2 = orX - 50;
-
-            dc.DrawLine(p.x, p.y, midX1, p.y); // Ngang từ AND
-            dc.DrawLine(midX1, p.y, midX2, orInputY); // Chéo đến OR
-            dc.DrawLine(midX2, orInputY, orX, orInputY); // Ngang vào OR
-        }
-
-        // Vẽ output F
-        int outX = orX + imgOR.GetWidth() + 30;
-        int outY = orInputY;
-
-        // Vẽ đường output
-        dc.DrawLine(orX + imgOR.GetWidth(), outY, outX, outY);
-
-        // Vẽ vòng tròn output
-        dc.SetBrush(*wxRED_BRUSH);
-        dc.SetPen(wxPen(*wxBLACK, 2));
-        dc.DrawCircle(outX + 10, outY, 10);
-
-        // Vẽ label F
-        dc.SetTextForeground(*wxBLACK);
-        dc.DrawText("F", outX + 5, outY - 7);
-
-        dc.SelectObject(wxNullBitmap);
-        anh_mach->SetBitmap(bmp);
+        img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
+        anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
     }
 };
 
-
+// ===========================================================================
 // App chính
-class MyApp : public wxApp
-{
+class MyApp : public wxApp {
 public:
-    virtual bool OnInit() {
+    bool OnInit() override {
 #ifdef __WXMSW__
         SetProcessDPIAware();
 #endif
-        wxInitAllImageHandlers(); // BẮT BUỘC nếu dùng PNG
-        MyFrame* khung = new MyFrame();
-        khung->Show(true);
+        wxInitAllImageHandlers();
+        auto* frame = new MyFrame();
+        frame->Show(true);
         return true;
     }
 };
 
-
-wxIMPLEMENT_APP(MyApp); //chứa hàm main => ko cần viết hàm main
+wxIMPLEMENT_APP(MyApp);
