@@ -1,0 +1,13 @@
+digraph G{
+rankdir=LR;
+node[fontsize=12];
+ A1[shape=none,image="E:\hk1_25-26\OOP_with_Cpp\test_code_with_Cpp\test_code_with_Cpp\Images\AND.png"];
+x[shape=circle,label="x"];
+x->A1;
+y[shape=circle,label="y"];
+y->A1;
+ OR[shape=none,image="E:\hk1_25-26\OOP_with_Cpp\test_code_with_Cpp\test_code_with_Cpp\Images\OR.png"];
+A1->OR;
+ F[shape=doublecircle,label="F"];
+OR->F;
+}
