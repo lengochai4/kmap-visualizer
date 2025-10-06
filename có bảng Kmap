@@ -15,7 +15,7 @@ using namespace std;
 namespace fs = filesystem;
 
 
-//====================BIẾN ĐỔI INPUT====================
+//BIẾN ĐỔI INPUT
 //Danh sách bit của các toán tử và số lượng biến
 vector<string> dsvitri;
 int slbien;
@@ -186,7 +186,7 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
     return all;
 }
 
-//====================BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC====================
+//BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC
 vector<string> Bits2 = { "00","01","11","10" };
 
 string IndextoBit(int index, int bitlength) {
@@ -379,7 +379,7 @@ public:
         wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
         dc.SetFont(font);
 
-        // --- Vẽ lưới và các giá trị 0 / 1 ---
+        // Vẽ bảng Kmap
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 int x = startX + j * cellSize;
@@ -416,7 +416,7 @@ public:
                 int w = g.colsize * cellSize;
                 int h = g.rowsize * cellSize;
 
-                // Nếu nhóm wrap-around thì cần vẽ riêng
+                // Nếu nhóm chu kì thì cần vẽ riêng
                 int rows = kmap.size();
                 int cols = kmap[0].size();
 
@@ -427,7 +427,7 @@ public:
                     dc.DrawRoundedRectangle(x, y, w, h, 15);
                 }
                 else {
-                    // Vẽ 2 phần nếu group vượt biên (wrap)
+                    // Vẽ 2 phần nếu vượt biên
                     if (wrapCol)
                         dc.DrawRoundedRectangle(startX, y, (g.startcol + g.colsize - cols) * cellSize, h, 15);
                     if (wrapRow)
