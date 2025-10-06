@@ -1,0 +1,44 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Group8_FinalProject\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{41D6CFB3-D93F-441A-842A-75D8BCBA1AF9}|Group8_FinalProject.vcxproj|C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\input project Kmap.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "input project Kmap.cpp",
+              "DocumentMoniker": "C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\input project Kmap.cpp",
+              "RelativeDocumentMoniker": "..\\input project Kmap.cpp",
+              "ToolTip": "C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\input project Kmap.cpp*",
+              "RelativeToolTip": "..\\input project Kmap.cpp*",
+              "ViewState": "AgIAAGwAAAAAAAAAAAAlwHsAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-10-05T13:56:59.493Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
