@@ -191,7 +191,6 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
     return all;
 }
 
-
 //====================BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC====================
 vector<string> Bits2 = { "00","01","11","10" };
 
@@ -251,28 +250,28 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
 //====================RENDER SANG HÌNH ẢNH====================
 // Kiểm tra file tồn tại
 bool kiemtrafiletontai(const string& path) {
-    ifstream f(path);
-    return f.good();
+    ifstream op(path);
+    return op.good();
 }
 
 // Tách chuỗi theo ký tự
 vector<string> tachchuoi(const string& s, char phancach) {
-    vector<string> out;
-    string tmp;
+    vector<string> daycactich;
+    string tich;
     for (char c : s) {
         if (c == phancach) {
-            if (!tmp.empty()) out.push_back(tmp);
-            tmp = "";
+            if (!tich.empty()) daycactich.push_back(tich);
+            tich = "";
         }
-        else tmp += c;
+        else tich += c;
     }
-    if (!tmp.empty()) out.push_back(tmp);
-    return out;
+    if (!tich.empty()) daycactich.push_back(tich);
+    return daycactich;
 }
 
 // Tạo file .dot cho Graphviz
-bool makeDot(string expr, string dotF, string imgF) {
-    ofstream f(dotF);
+bool makeDot(string expr, string dotf, string pngf) {
+    ofstream f(dotf);
     if (!f.is_open()) return false;
 
     f << "digraph G {\n";
@@ -283,16 +282,16 @@ bool makeDot(string expr, string dotF, string imgF) {
         f << var << "[shape=circle, label=\"" << var << "\", fillcolor=\"#DDA0DD\"];\n";
 
     int cNOT = 0, cAND = 0;
-    auto terms = tachchuoi(expr, '+');
+    auto daychuoi = tachchuoi(expr, '+');
     vector<string> ANDs;
 
-    for (auto& t : terms) {
+    for (auto& t : daychuoi) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
 
         cAND++;
         string aN = "A" + to_string(cAND);
-        f << aN << "[shape=none,image=\"" << imgF << "\\AND.png\"];\n";
+        f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
 
         for (int i = 0; i < t.size(); i++) {
             char c = t[i];
@@ -302,7 +301,7 @@ bool makeDot(string expr, string dotF, string imgF) {
             if (i > 0 && t[i - 1] == '-') {
                 cNOT++;
                 string nN = "N" + to_string(cNOT);
-                f << nN << "[shape=none,image=\"" << imgF << "\\NOT.png\"];\n";
+                f << nN << "[shape=none,image=\"" << pngf << "\\NOT.png\"];\n";
                 f << var << "->" << nN << ";\n";
                 f << nN << "->" << aN << ";\n";
             }
@@ -316,7 +315,7 @@ bool makeDot(string expr, string dotF, string imgF) {
         f << ANDs[0] << "->F;\n";
     }
     else {
-        f << "OR[shape=none,image=\"" << imgF << "\\OR.png\"];\n";
+        f << "OR[shape=none,image=\"" << pngf << "\\OR.png\"];\n";
         for (auto& x : ANDs) f << x << "->OR;\n";
         f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
         f << "OR->F;\n";
@@ -328,10 +327,10 @@ bool makeDot(string expr, string dotF, string imgF) {
 }
 
 // Gọi Graphviz để render PNG
-bool doGraph(const string& exe, const string& dotF, const string& pngF) {
-    if (!kiemtrafiletontai(exe) || !kiemtrafiletontai(dotF)) return false;
+bool doGraph(const string& exe, const string& dotf, const string& pngf) {
+    if (!kiemtrafiletontai(exe) || !kiemtrafiletontai(dotf)) return false;
 
-    string cmd = "\"" + exe + "\" -Tpng \"" + dotF + "\" -o \"" + pngF + "\"";
+    string cmd = "\"" + exe + "\" -Tpng \"" + dotf + "\" -o \"" + pngf + "\"";
     vector<char> buf(cmd.begin(), cmd.end());
     buf.push_back('\0');
 
@@ -341,18 +340,17 @@ bool doGraph(const string& exe, const string& dotF, const string& pngF) {
     si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE,
-        CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     if (!ok) {
-        cerr << "CreateProcessA failed, error: " << GetLastError() << endl;
+        cerr << "Tạo tiến trình thất bại, lỗi: " << GetLastError() << endl;
         return false;
     }
 
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    return kiemtrafiletontai(pngF);
+    return kiemtrafiletontai(pngf);
 }
 
 // ===========================================================================
@@ -369,22 +367,22 @@ public:
 
         wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
         wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
-        line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        line1->Add(new wxStaticText(panel, -1, "Nhập biểu thức:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_nhap = new wxTextCtrl(panel, -1, "");
         line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
         mainSizer->Add(line1, 0, wxEXPAND | wxALL, 10);
 
-        wxButton* nut = new wxButton(panel, -1, "Tinh toan");
+        wxButton* nut = new wxButton(panel, -1, "Tính toán");
         nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
         mainSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
-        line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        line2->Add(new wxStaticText(panel, -1, "Biểu thức rút gọn:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
         mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
 
-        mainSizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
+        mainSizer->Add(new wxStaticText(panel, -1, "Mạch logic:"), 0, wxALL, 5);
         wxImage img(400, 300);
         img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
@@ -401,27 +399,27 @@ public:
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        string exePath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\bin\dot.exe)";
-        string dotPath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.dot)";
-        string pngPath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.png)";
-        string imgFolder = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images)";
+        string exepath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\bin\dot.exe)";
+        string dotpath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.dot)";
+        string pngpath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.png)";
+        string pngfolder = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images)";
 
-        if (!makeDot(ans, dotPath, imgFolder)) {
+        if (!makeDot(ans, dotpath, pngfolder)) {
             wxMessageBox("Không thể tạo .dot!");
             return;
         }
-        if (!doGraph(exePath, dotPath, pngPath)) {
+        if (!doGraph(exepath, dotpath, pngpath)) {
             wxMessageBox("Không render được PNG!");
             return;
         }
 
         Sleep(200);
-        if (!fs::exists(pngPath)) {
+        if (!fs::exists(pngpath)) {
             wxMessageBox("Không tìm thấy file PNG!");
             return;
         }
 
-        wxImage img(pngPath);
+        wxImage img(pngpath);
         if (!img.IsOk()) {
             wxMessageBox("Không đọc được ảnh!");
             return;
