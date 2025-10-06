@@ -1,7 +1,4 @@
 ﻿#include <wx/wx.h>
-#include <wx/textctrl.h>
-#include <wx/button.h>
-#include <wx/stattext.h>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -9,39 +6,38 @@
 #include <algorithm>
 #include <iostream>
 #include <math.h>
+#include <set>
 using namespace std;
 
-vector<int> dsvitri; // danh sách dữ liệu cho thuật toán Kmap (ô kề)
+//====================BIẾN ĐỔI INPUT====================
+//Danh sách bit của các toán tử và số lượng biến
+vector<string> dsvitri;
 int slbien;
+vector<char> dsbien; //Giữ thứ tự biến để in ra sau khi rút gọn
 
-int chuyendoi(const string& toantu)
+struct group {
+    int rowsize, colsize;
+    int startrow, startcol;
+    set<pair<int, int>> cells; //Tập ô mà group này chiếm
+};
+
+//Chuyển đổi từ một toán tử sang bit nhị phân của nó
+string chuyendoi(const string& toantu)
 {
-    string toantureal = "";
+    string bits = "";
     for (int i = 0; i < toantu.length(); i++) {
-        if (toantu[i] != ' ') toantureal += toantu[i];
-    }
-    //x-yz
-    vector<int> bits;
-    for (int i = 0; i < toantureal.length(); i++) {
-        if (toantureal[i] != '-') {
+        if (toantu[i] != '-' && toantu[i] != ' ') {
             if (i > 0) {
-                if (toantureal[i - 1] == '-') bits.push_back(0);
-                else if (toantureal[i - 1] != '-') bits.push_back(1);
+                if (toantu[i - 1] == '-') bits += "0";
+                else if (toantu[i - 1] != '-') bits += "1";
             }
-            //trường hợp i==0
-            else bits.push_back(1);
+            //i==0
+            else bits += "1";
         }
     }
-
-    //chuyển từ bit sang số
-    int num = 0;
-    int j = 0;
-    for (int i = bits.size() - 1; i >= 0; i--) {
-        num += bits[j] * pow(2, i);
-        j++;
-    }
-    return num;
+    return bits;
 }
+//Kiểm tra số lượng biến của một biểu thức, tách biểu thức thành từng toán tử và xử lý nhị phân
 void xuly(const string& bieuthuc) {
     slbien = 0;
     dsvitri.clear();
@@ -59,20 +55,211 @@ void xuly(const string& bieuthuc) {
     {
         if (!toantu.empty()) dsvitri.push_back(chuyendoi(toantu));
     }
-    cout << slbien << endl;
+    dsbien = bien;
 }
 
+
+//====================BIẾN ĐỔI SANG KMAP====================
+int Index(const string& bits) {
+    static vector<string> bits2 = { "00","01","11","10" };
+    if (bits.size() == 1) return (bits == "1") ? 1 : 0;
+    if (bits.size() == 2) {
+        for (int i = 0; i < 4; i++) if (bits == bits2[i]) return i;
+    }
+    return -1;
+}
+
+vector<vector<bool>> KMap_Transformation(const vector<string>& dsvitri) {
+    int nua = slbien / 2;
+    int row = pow(2, nua);
+    int col = pow(2, slbien - nua);
+    vector<vector<bool>> kmap(row, vector<bool>(col, false));
+
+    for (const string& x : dsvitri) {
+        int r, c;
+        if (nua == 0)  r = 0;
+        else r = Index(x.substr(0, nua));
+
+        if ((slbien - nua) == 0) c = 0;
+        else c = Index(x.substr(nua));
+
+        if (r >= 0 && c >= 0) kmap[r][c] = true;
+    }
+    return kmap;
+}
+
+
+//====================RÚT GỌN BIỂU THỨC KMAP====================
+//Kiểm tra 1 nhóm có tồn tại trong mảng không
+bool FindGroup(const vector<vector<bool>>& kmap, int startrow, int startcol, int rowsizecheck, int colsizecheck) {
+    int row = kmap.size(),
+        col = kmap[0].size();
+
+    for (int i = 0; i < rowsizecheck; i++) {
+        for (int j = 0; j < colsizecheck; j++) {
+            int rowcheck = (startrow + i) % row;
+            int colcheck = (startcol + j) % col;
+            if (!kmap[rowcheck][colcheck]) return false;
+        }
+    }
+    return true;
+}
+
+// Tạo tập các ô mà một group chiếm để so sánh
+set<pair<int, int>> ListGroup(int startrow, int startcol, int rowsize, int colsize, int row, int col) {
+    set<pair<int, int>> s;
+    for (int i = 0; i < rowsize; i++) {
+        for (int j = 0; j < colsize; j++) {
+            int grouprow = (startrow + i) % row;
+            int groupcol = (startcol + j) % col;
+            s.insert({ grouprow, groupcol });
+        }
+    }
+    return s;
+}
+
+//Kiểm tra xem group con có nằm trong group lớn nào khác trong tập không
+bool Inside(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) {
+    for (auto& p : smaller) if (big.find(p) == big.end()) return false;
+    return true;
+}
+
+bool areagiamdan(const pair<int, int>& a, const pair<int, int>& b) {
+    return a.first * a.second > b.first * b.second;
+}
+//Rút gọn KMap
+vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
+    vector<group> all;
+    int row = kmap.size(), col = kmap[0].size();
+
+    vector<pair<int, int>> groupsize;
+    for (int r = row; r >= 1; r /= 2) {
+        for (int c = col; c >= 1; c /= 2) {
+            groupsize.push_back({ r, c });
+        }
+    }
+
+    //Sắp xếp theo diện tích giảm dần
+    sort(groupsize.begin(), groupsize.end(), areagiamdan);
+
+    for (pair<int, int> x : groupsize) {
+        int rowsizecheck = x.first, colsizecheck = x.second;
+
+        for (int startrow = 0; startrow < row; startrow++) {
+            for (int startcol = 0; startcol < col; startcol++) {
+                if (FindGroup(kmap, startrow, startcol, rowsizecheck, colsizecheck)) {
+                    set<pair<int, int>> test = ListGroup(startrow, startcol, rowsizecheck, colsizecheck, row, col);
+                    bool next = false;
+
+                    auto it = all.begin();
+                    while (it != all.end()) {
+                        if (it->cells == test) {
+                            next = true;
+                            break;
+                        }
+                        else if (Inside(it->cells, test)) {
+                            next = true;
+                            break;
+                        }
+                        else if (Inside(test, it->cells)) {
+                            it = all.erase(it);
+                        }
+                        else ++it;
+                    }
+                    //Nếu không bị skip thì thêm group mới vào danh sách
+                    if (!next) {
+                        group g;
+                        g.rowsize = rowsizecheck;
+                        g.colsize = colsizecheck;
+                        g.startrow = startrow;
+                        g.startcol = startcol;
+                        g.cells = std::move(test);
+                        all.push_back(g);
+
+                    }
+                }
+            }
+        }
+
+    }
+    return all;
+}
+
+
+//====================BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC====================
+vector<string> Bits2 = { "00","01","11","10" };
+
+string IndextoBit(int index, int bitlength) {
+    if (bitlength == 0) return "";
+    if (bitlength == 1) return (index == 0) ? "0" : "1";
+    if (bitlength == 2) return Bits2[index];
+    return "";
+}
+
+string CelltoBit(int rowindex, int colindex, int numberofvariables) {
+    int nua = numberofvariables / 2;
+    int right = nua;
+    int left = numberofvariables - nua;
+
+    string leftside = IndextoBit(rowindex, right);
+    string rightside = IndextoBit(colindex, left);
+    return leftside + rightside;
+}
+
+string GrouptoToanTu(const group& g, int numofvar) {
+    auto x = g.cells.begin();
+    string change = CelltoBit(x->first, x->second, numofvar);
+    x++;
+
+    for (; x != g.cells.end(); x++) {
+        string b = CelltoBit(x->first, x->second, numofvar);
+        for (int k = 0; k < numofvar; ++k) {
+            if (change[k] != 'x' && change[k] != b[k]) change[k] = 'x';
+        }
+    }
+
+    string toantu;
+    for (int k = 0; k < numofvar; ++k) {
+        if (change[k] == '0') { toantu += "-"; toantu.push_back(dsbien[k]); }
+        else if (change[k] == '1') { toantu.push_back(dsbien[k]); }
+    }
+    if (toantu.empty()) toantu = "1";
+    return toantu;
+}
+
+string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
+    set<string> unique;
+
+    for (const auto& g : groups) unique.insert(GrouptoToanTu(g, numofvar));
+    string output;
+
+    for (auto x = unique.begin(); x != unique.end(); x++) {
+        if (x != unique.begin()) output += " + ";
+        output += *x;
+    }
+    return output.empty() ? "0" : output;
+}
+
+//====================MAIN====================
 int main() {
     string input = "";
     getline(cin, input);
     xuly(input);
-    for (int x : dsvitri) {
-        cout << x << endl;
+    vector<vector<bool>> kmap = KMap_Transformation(dsvitri);
+    vector<group> groups = KMap_Minimization(kmap);
+
+    for (auto& g : groups) {
+        cout << "{" << g.rowsize << "x" << g.colsize << "} (" << g.startrow << "," << g.startcol << ")";
+        cout << " ->";
+        for (auto& cell : g.cells) cout << " (" << cell.first << "," << cell.second << ")";
+        cout << "\n";
     }
 
+    string ans = ChuoiBieuThuc(groups, slbien);
+    cout << "Bieu thuc sau khi rut gon: " << ans << "\n";
 }
 
-// Lớp giao diện chính
+//====================CODE GIAO DIỆN WINDOW (SỬ DỤNG WXWIDGETS)====================
 class MyFrame : public wxFrame
 {
 public:
@@ -142,7 +329,10 @@ public:
 class MyApp : public wxApp 
 {
 public : virtual bool OnInit() {
-
+#ifdef __WXMSW__
+    // Bật DPI awareness cho Windows
+    SetProcessDPIAware();
+#endif
         MyFrame* khung = new MyFrame();
         khung->Show(true);
         return true;
