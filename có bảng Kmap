@@ -355,9 +355,109 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
 
 // ===========================================================================
 // Giao diện wxWidgets
+
+class KmapPanel : public wxPanel {
+public:
+    vector<vector<bool>> kmap;
+    vector<group> groups;
+    int slbien;
+
+    KmapPanel(wxWindow* parent)
+        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(400, 400))
+    {
+        Bind(wxEVT_PAINT, &KmapPanel::OnPaint, this);
+    }
+
+    void SetData(const vector<vector<bool>>& data, const vector<group>& g, int nVar) {
+        kmap = data;
+        groups = g;
+        slbien = nVar;
+        Refresh();
+    }
+
+    void OnPaint(wxPaintEvent&) {
+        if (kmap.empty()) return;
+        wxPaintDC dc(this);
+        dc.Clear();
+
+        int rows = kmap.size();
+        int cols = kmap[0].size();
+        int cellSize = 80;
+
+        int startX = 50;
+        int startY = 50;
+
+        wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+        dc.SetFont(font);
+
+        // --- Vẽ lưới và các giá trị 0 / 1 ---
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                int x = startX + j * cellSize;
+                int y = startY + i * cellSize;
+
+                if (kmap[i][j])
+                    dc.SetBrush(wxBrush(wxColour(255, 200, 200))); // tô đỏ nhạt cho ô 1
+                else
+                    dc.SetBrush(*wxWHITE_BRUSH);
+
+                dc.SetPen(*wxBLACK_PEN);
+                dc.DrawRectangle(x, y, cellSize, cellSize);
+
+                dc.DrawText(kmap[i][j] ? "1" : "0", x + cellSize / 2 - 5, y + cellSize / 2 - 8);
+            }
+        }
+
+        // --- Vẽ các nhóm (khoanh vùng) ---
+        if (!groups.empty()) {
+            int colorIndex = 0;
+            vector<wxColour> colors = {
+                wxColour(255,0,0,80), wxColour(0,255,0,80),
+                wxColour(0,0,255,80), wxColour(255,255,0,80),
+                wxColour(255,0,255,80), wxColour(0,255,255,80)
+            };
+
+            for (const auto& g : groups) {
+                wxColour col = colors[colorIndex % colors.size()];
+                dc.SetPen(wxPen(col, 3, wxPENSTYLE_SOLID));
+                dc.SetBrush(wxBrush(col, wxBRUSHSTYLE_TRANSPARENT));
+
+                int x = startX + g.startcol * cellSize;
+                int y = startY + g.startrow * cellSize;
+                int w = g.colsize * cellSize;
+                int h = g.rowsize * cellSize;
+
+                // Nếu nhóm wrap-around thì cần vẽ riêng
+                int rows = kmap.size();
+                int cols = kmap[0].size();
+
+                bool wrapRow = (g.startrow + g.rowsize > rows);
+                bool wrapCol = (g.startcol + g.colsize > cols);
+
+                if (!wrapRow && !wrapCol) {
+                    dc.DrawRoundedRectangle(x, y, w, h, 15);
+                }
+                else {
+                    // Vẽ 2 phần nếu group vượt biên (wrap)
+                    if (wrapCol)
+                        dc.DrawRoundedRectangle(startX, y, (g.startcol + g.colsize - cols) * cellSize, h, 15);
+                    if (wrapRow)
+                        dc.DrawRoundedRectangle(x, startY, w, (g.startrow + g.rowsize - rows) * cellSize, 15);
+                    // phần chính
+                    dc.DrawRoundedRectangle(x % (cols * cellSize), y % (rows * cellSize),
+                        min(w, cols * cellSize), min(h, rows * cellSize), 15);
+                }
+
+                colorIndex++;
+            }
+        }
+    }
+};
+
 class MyFrame : public wxFrame {
 public:
-    wxTextCtrl* o_kmap;
+    KmapPanel* panelKmap;
+
     wxTextCtrl* o_nhap;
     wxTextCtrl* o_bieuthuc_rutgon;
     wxStaticBitmap* anh_mach;
@@ -383,21 +483,30 @@ public:
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
         mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
 
-        mainSizer->Add(new wxStaticText(panel, -1, "Mạch logic:"), 0, wxALL, 5);
+        wxBoxSizer* mach_kmap_sizer = new wxBoxSizer(wxHORIZONTAL);
+
+        // --- Cột bên trái: Mạch logic ---
+        wxBoxSizer* mach_sizer = new wxBoxSizer(wxVERTICAL);
+        mach_sizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
+
         wxImage img(400, 300);
         img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
-        mainSizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
 
-        wxBoxSizer* rightSizer = new wxBoxSizer(wxHORIZONTAL);
-        o_kmap = new wxTextCtrl(panel, -1, "K-map",
-            wxDefaultPosition, wxSize(300, 150),
-            wxTE_MULTILINE | wxTE_READONLY);
+        mach_sizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
+        mach_kmap_sizer->Add(mach_sizer, 1, wxEXPAND | wxALL, 5);
 
-        rightSizer->AddStretchSpacer(1);      // đẩy phần tử về phải
-        rightSizer->Add(o_kmap, 0, wxRIGHT, 10);
+        // --- Cột bên phải: Bảng K-map ---
+        wxBoxSizer* kmap_sizer = new wxBoxSizer(wxVERTICAL);
+        kmap_sizer->Add(new wxStaticText(panel, -1, "Gom nhom K-map:"), 0, wxALL, 5);
 
-        mainSizer->Add(rightSizer, 0, wxEXPAND | wxALL, 0);
+        panelKmap = new KmapPanel(panel);
+        kmap_sizer->Add(panelKmap, 0, wxALIGN_CENTER | wxALL, 10);
+
+        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxALL, 5);
+
+        // ===== Thêm vào mainSizer =====
+        mainSizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
 
         panel->SetSizer(mainSizer);
     }
@@ -407,6 +516,8 @@ public:
         xuly(input);
         auto kmap = KMap_Transformation(dsvitri);
         auto groups = KMap_Minimization(kmap);
+        panelKmap->SetData(kmap, groups, slbien);
+
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
@@ -439,15 +550,6 @@ public:
         img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
-
-        std::ostringstream kmapout;
-        for (int i = 0; i < kmap.size(); i++) {
-            for (int j = 0; j < kmap[i].size(); j++) {
-                kmapout << (kmap[i][j] ? "1 " : "0 ");
-            }
-            kmapout << "\n";
-        }
-        o_kmap->SetValue(kmapout.str());
     }
 };
 
