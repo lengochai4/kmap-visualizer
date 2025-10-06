@@ -37,7 +37,6 @@ string chuyendoi(const string& toantu)
                 if (toantu[i - 1] == '-') bits += "0";
                 else if (toantu[i - 1] != '-') bits += "1";
             }
-            //i==0
             else bits += "1";
         }
     }
@@ -65,7 +64,7 @@ void xuly(const string& bieuthuc) {
 }
 
 
-//====================BIẾN ĐỔI SANG KMAP====================
+//BIẾN ĐỔI SANG KMAP
 int Index(const string& bits) {
     static vector<string> bits2 = { "00","01","11","10" };
     if (bits.size() == 1) return (bits == "1") ? 1 : 0;
@@ -95,7 +94,7 @@ vector<vector<bool>> KMap_Transformation(const vector<string>& dsvitri) {
 }
 
 
-//====================RÚT GỌN BIỂU THỨC KMAP====================
+//RÚT GỌN BIỂU THỨC KMAP
 //Kiểm tra 1 nhóm có tồn tại trong mảng không
 bool FindGroup(const vector<vector<bool>>& kmap, int startrow, int startcol, int rowsizecheck, int colsizecheck) {
     int row = kmap.size(),
@@ -133,11 +132,11 @@ bool Inside(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) 
 bool areagiamdan(const pair<int, int>& a, const pair<int, int>& b) {
     return a.first * a.second > b.first * b.second;
 }
+
 //Rút gọn KMap
 vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
     vector<group> all;
     int row = kmap.size(), col = kmap[0].size();
-
     vector<pair<int, int>> groupsize;
     for (int r = row; r >= 1; r /= 2) {
         for (int c = col; c >= 1; c /= 2) {
@@ -150,13 +149,11 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
 
     for (pair<int, int> x : groupsize) {
         int rowsizecheck = x.first, colsizecheck = x.second;
-
         for (int startrow = 0; startrow < row; startrow++) {
             for (int startcol = 0; startcol < col; startcol++) {
                 if (FindGroup(kmap, startrow, startcol, rowsizecheck, colsizecheck)) {
                     set<pair<int, int>> test = ListGroup(startrow, startcol, rowsizecheck, colsizecheck, row, col);
                     bool next = false;
-
                     auto it = all.begin();
                     while (it != all.end()) {
                         if (it->cells == test) {
@@ -181,12 +178,10 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
                         g.startcol = startcol;
                         g.cells = std::move(test);
                         all.push_back(g);
-
                     }
                 }
             }
         }
-
     }
     return all;
 }
@@ -245,9 +240,7 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
     return output.empty() ? "0" : output;
 }
 
-
-
-//====================RENDER SANG HÌNH ẢNH====================
+//RENDER SANG HÌNH ẢNH
 // Kiểm tra file tồn tại
 bool kiemtrafiletontai(const string& path) {
     ifstream op(path);
@@ -288,11 +281,9 @@ bool makeDot(string expr, string dotf, string pngf) {
     for (auto& t : daychuoi) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
-
         cAND++;
         string aN = "A" + to_string(cAND);
         f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
-
         for (int i = 0; i < t.size(); i++) {
             char c = t[i];
             if (c == '-') continue;
@@ -320,7 +311,6 @@ bool makeDot(string expr, string dotf, string pngf) {
         f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
         f << "OR->F;\n";
     }
-
     f << "}\n";
     f.close();
     return true;
@@ -353,7 +343,6 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     return kiemtrafiletontai(pngf);
 }
 
-// ===========================================================================
 // Giao diện wxWidgets
 
 class KmapPanel : public wxPanel {
@@ -408,7 +397,7 @@ public:
             }
         }
 
-        // --- Vẽ các nhóm (khoanh vùng) ---
+        //Vẽ các nhóm (khoanh vùng)
         if (!groups.empty()) {
             int colorIndex = 0;
             vector<wxColour> colors = {
@@ -447,7 +436,6 @@ public:
                     dc.DrawRoundedRectangle(x % (cols * cellSize), y % (rows * cellSize),
                         min(w, cols * cellSize), min(h, rows * cellSize), 15);
                 }
-
                 colorIndex++;
             }
         }
@@ -485,27 +473,21 @@ public:
 
         wxBoxSizer* mach_kmap_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-        // --- Cột bên trái: Mạch logic ---
         wxBoxSizer* mach_sizer = new wxBoxSizer(wxVERTICAL);
         mach_sizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
-
         wxImage img(400, 300);
         img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
-
         mach_sizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
         mach_kmap_sizer->Add(mach_sizer, 1, wxEXPAND | wxALL, 5);
 
-        // --- Cột bên phải: Bảng K-map ---
         wxBoxSizer* kmap_sizer = new wxBoxSizer(wxVERTICAL);
         kmap_sizer->Add(new wxStaticText(panel, -1, "Gom nhom K-map:"), 0, wxALL, 5);
-
         panelKmap = new KmapPanel(panel);
         kmap_sizer->Add(panelKmap, 0, wxALIGN_CENTER | wxALL, 10);
-
         mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxALL, 5);
 
-        // ===== Thêm vào mainSizer =====
+        //Thêm vào mainSizer
         mainSizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
 
         panel->SetSizer(mainSizer);
@@ -534,25 +516,21 @@ public:
             wxMessageBox("Không render được PNG!");
             return;
         }
-
         Sleep(200);
         if (!fs::exists(pngpath)) {
             wxMessageBox("Không tìm thấy file PNG!");
             return;
         }
-
         wxImage img(pngpath);
         if (!img.IsOk()) {
             wxMessageBox("Không đọc được ảnh!");
             return;
         }
-
         img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
     }
 };
-
 
 // App chính
 class MyApp : public wxApp {
