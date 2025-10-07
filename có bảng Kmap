@@ -515,25 +515,76 @@ public:
         Maximize(true);
         wxPanel* panel = new wxPanel(this);
 
-        wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* mainsizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* topsizer = new wxBoxSizer(wxHORIZONTAL);
+        wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
+
+        // hình logo trường 
+        wxImage logotruong("E:/Images/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (logotruong.IsOk())
+            logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
+        else {
+            logotruong.Create(100, 100);
+            logotruong.SetRGB(wxRect(0, 0, 100, 100), 255, 255, 255);
+        }
+        wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
+
+        // danh sách thành viên nhóm 
+        wxImage dsthanhvien("E:/Images/danhsachtv.png", wxBITMAP_TYPE_PNG);          //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (dsthanhvien.IsOk())
+            dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
+        else {
+            dsthanhvien.Create(480, 180);
+            dsthanhvien.SetRGB(wxRect(0, 0, 480, 180), 255, 255, 255);
+        }
+        wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
+
+        // tên trường 
+        wxImage tentruong("E:/Images/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (tentruong.IsOk())
+            tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
+        else {
+            tentruong.Create(330, 50);
+            tentruong.SetRGB(wxRect(0, 0, 330, 50), 255, 255, 255);
+        }
+        wxStaticBitmap* o_tentruong = new wxStaticBitmap(panel, -1, wxBitmap(tentruong));
+
+        // gộp tên trường + logo thành 1 khung theo trục ngang 
+        wxBoxSizer* logo_tentruong_sizer = new wxBoxSizer(wxHORIZONTAL);
+        logo_tentruong_sizer->Add(o_logo, 0, wxLEFT | wxTOP | wxALIGN_LEFT, 5);
+        logo_tentruong_sizer->Add(o_tentruong, 0, wxLEFT | wxALIGN_TOP, 5);
+
+        // gộp tên trường + logo + danh sách vào 1 khung theo trục dọc 
+        leftsizer->Add(logo_tentruong_sizer, 0, wxALIGN_LEFT | wxALL, 0);
+        leftsizer->Add(o_danhsach, 0, wxTOP | wxALIGN_LEFT, 5);
+
+        wxBoxSizer* inputSizer = new wxBoxSizer(wxVERTICAL);
+
+        // ô nhập 
         wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
         line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_nhap = new wxTextCtrl(panel, -1, "");
         line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
-        mainSizer->Add(line1, 0, wxEXPAND | wxALL, 10);
+        inputSizer->Add(line1, 0, wxEXPAND | wxALL, 5);
 
         wxButton* nut = new wxButton(panel, -1, "Tinh toan");
         nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
-        mainSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
+        inputSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
         line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
-        mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
+        inputSizer->Add(line2, 0, wxEXPAND | wxALL, 5);
+
+        topsizer->Add(leftsizer, 0, wxALIGN_TOP | wxALL, 5);
+        topsizer->Add(inputSizer, 1, wxEXPAND | wxALL, 5);
+
+        mainsizer->Add(topsizer, 0, wxEXPAND | wxALL, 5);
 
         wxBoxSizer* mach_kmap_sizer = new wxBoxSizer(wxHORIZONTAL);
 
+        // ô mạch logic + kmap
         wxBoxSizer* mach_sizer = new wxBoxSizer(wxVERTICAL);
         mach_sizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
         wxImage img(400, 300);
@@ -548,10 +599,9 @@ public:
         kmap_sizer->Add(panelKmap, 0, wxALIGN_CENTER | wxALL, 10);
         mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxALL, 5);
 
-        //Thêm vào mainSizer
-        mainSizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
+        mainsizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
 
-        panel->SetSizer(mainSizer);
+        panel->SetSizer(mainsizer);
     }
 
     void OnCalculate(wxCommandEvent&) {
@@ -587,7 +637,7 @@ public:
             wxMessageBox("Khong doc duoc anh!");
             return;
         }
-        img.Rescale(1100, 770, wxIMAGE_QUALITY_HIGH);
+        img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
     }
