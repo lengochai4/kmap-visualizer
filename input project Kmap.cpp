@@ -289,9 +289,22 @@ bool makeDot(string expr, string dotf, string pngf) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
 
-        cAND++;
-        string aN = "A" + to_string(cAND);
-        f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
+        // thêm đếm biến 
+        int sobien = 0;
+        for (char c : t)
+            if (isalpha(c)) sobien++;
+
+        string target;
+
+        if (sobien > 1) {
+            cAND++;
+            string aN = "A" + to_string(cAND);
+            f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
+            target = aN;
+        }
+        else {
+            target = "OR";
+        }
 
         for (int i = 0; i < t.size(); i++) {
             char c = t[i];
@@ -303,11 +316,15 @@ bool makeDot(string expr, string dotf, string pngf) {
                 string nN = "N" + to_string(cNOT);
                 f << nN << "[shape=none,image=\"" << pngf << "\\NOT.png\"];\n";
                 f << var << "->" << nN << ";\n";
-                f << nN << "->" << aN << ";\n";
+                f << nN << "->" << target << ";\n";
             }
-            else f << var << "->" << aN << ";\n";
+            else {
+                f << var << "->" << target << ";\n";
+            }
         }
-        ANDs.push_back(aN);
+
+        if (sobien > 1)
+            ANDs.push_back(target);
     }
 
     if (ANDs.size() == 1) {
