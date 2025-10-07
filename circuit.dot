@@ -1,13 +1,11 @@
-digraph G{
-rankdir=LR;
-node[fontsize=12];
- A1[shape=none,image="E:\hk1_25-26\OOP_with_Cpp\test_code_with_Cpp\test_code_with_Cpp\Images\AND.png"];
-x[shape=circle,label="x"];
-x->A1;
-y[shape=circle,label="y"];
-y->A1;
- OR[shape=none,image="E:\hk1_25-26\OOP_with_Cpp\test_code_with_Cpp\test_code_with_Cpp\Images\OR.png"];
-A1->OR;
- F[shape=doublecircle,label="F"];
+digraph G {
+rankdir=LR; splines=ortho; nodesep=0.6; ranksep=0.8;
+node[fontsize=12, style=filled, fillcolor=lightblue];
+w[shape=circle, label="w", fillcolor="#DDA0DD"];
+y[shape=circle, label="y", fillcolor="#DDA0DD"];
+z[shape=circle, label="z", fillcolor="#DDA0DD"];
+z->OR;
+OR[shape=none,image="C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\Images\OR.png"];
+F[shape=doublecircle,label="F",fillcolor="#FFA07A"];
 OR->F;
 }

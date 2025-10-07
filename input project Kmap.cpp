@@ -15,41 +15,40 @@ using namespace std;
 namespace fs = filesystem;
 
 
-//====================BIẾN ĐỔI INPUT====================
 //Danh sách bit của các toán tử và số lượng biến
 vector<string> dsvitri;
 int slbien;
-vector<char> dsbien; //Giữ thứ tự biến để in ra sau khi rút gọn
-
 struct group {
     int rowsize, colsize;
     int startrow, startcol;
-    set<pair<int, int>> cells; //Tập ô mà group này chiếm
+    set<pair<int, int>> cells;  //Các nhóm bé hơn trùng với nhóm này
 };
+vector<char> dsbien;            //Giữ thứ tự biến để in ra sau khi rút gọn
 
-//Chuyển đổi từ một toán tử sang bit nhị phân của nó
-string chuyendoi(const string& toantu)
+
+//====================BIẾN ĐỔI INPUT====================
+//Chuyển đổi toán tử sang bit nhị phân
+string chuyendoitbit(const string& toantu)
 {
     string bits = "";
     for (int i = 0; i < toantu.length(); i++) {
-        if (toantu[i] != '-' && toantu[i] != ' ') {
+        if (isalpha(toantu[i])) {
             if (i > 0) {
                 if (toantu[i - 1] == '-') bits += "0";
-                else if (toantu[i - 1] != '-') bits += "1";
+                else bits += "1";
             }
-            //i==0
             else bits += "1";
         }
     }
     return bits;
 }
-//Kiểm tra số lượng biến của một biểu thức, tách biểu thức thành từng toán tử và xử lý nhị phân
-void xuly(const string& bieuthuc) {
+//Tách biểu thức thành các toán tử & chuyển đổi bit
+void xulybieuthuc(const string& bieuthuc) {
     slbien = 0;
     dsvitri.clear();
     vector<char> bien;
     for (char c : bieuthuc) {
-        if ((find(bien.begin(), bien.end(), c) == bien.end()) && c != ' ' && c != '+' && c != '-') {
+        if (isalpha(c) && find(bien.begin(), bien.end(), c) == bien.end()) {
             slbien++;
             bien.push_back(c);
         }
@@ -59,37 +58,43 @@ void xuly(const string& bieuthuc) {
     string toantu;
     while (getline(ss, toantu, '+'))
     {
-        if (!toantu.empty()) dsvitri.push_back(chuyendoi(toantu));
+        if (!toantu.empty()) dsvitri.push_back(chuyendoitbit(toantu));
     }
     dsbien = bien;
 }
 
 
 //====================BIẾN ĐỔI SANG KMAP====================
-int Index(const string& bits) {
-    static vector<string> bits2 = { "00","01","11","10" };
-    if (bits.size() == 1) return (bits == "1") ? 1 : 0;
-    if (bits.size() == 2) {
-        for (int i = 0; i < 4; i++) if (bits == bits2[i]) return i;
-    }
+//Đưa bit thành vị trí trong vector 2 chiều
+int bitsangvector(const string& bits) {
+    vector<string> bien2 = { "00","01","11","10" };
+
+    if (bits.size() == 1) 
+        return (bits == "1") ? 1 : 0;
+
+    if (bits.size() == 2)
+        for (int i = 0; i < bien2.size(); i++)
+            if (bits == bien2[i]) return i;
+
     return -1;
 }
 
-vector<vector<bool>> KMap_Transformation(const vector<string>& dsvitri) {
-    int nua = slbien / 2;
-    int row = pow(2, nua);
-    int col = pow(2, slbien - nua);
-    vector<vector<bool>> kmap(row, vector<bool>(col, false));
+//Đưa tất cả bit toán tử vào K-Map
+vector<vector<bool>> biendoiKmap(const vector<string>& dsvitri) {
+    int chiadoi = slbien / 2;
+    int vectorrow = pow(2, chiadoi);
+    int vectorcol = pow(2, slbien - chiadoi);
+    vector<vector<bool>> kmap(vectorrow, vector<bool>(vectorcol, false));
 
     for (const string& x : dsvitri) {
-        int r, c;
-        if (nua == 0)  r = 0;
-        else r = Index(x.substr(0, nua));
+        int lefttorow, righttocol;
+        if (chiadoi == 0)  lefttorow = 0;
+        else lefttorow = bitsangvector(x.substr(0, chiadoi));
 
-        if ((slbien - nua) == 0) c = 0;
-        else c = Index(x.substr(nua));
+        if ((slbien - chiadoi) == 0) righttocol = 0;
+        else righttocol = bitsangvector(x.substr(chiadoi));
 
-        if (r >= 0 && c >= 0) kmap[r][c] = true;
+        if (lefttorow >= 0 && righttocol >= 0) kmap[lefttorow][righttocol] = true;
     }
     return kmap;
 }
@@ -360,7 +365,7 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     if (!ok) {
-        cerr << "Tạo tiến trình thất bại, lỗi: " << GetLastError() << endl;
+        cerr << "Tao tien trình that bai, loi: " << GetLastError() << endl;
         return false;
     }
 
@@ -384,22 +389,22 @@ public:
 
         wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
         wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
-        line1->Add(new wxStaticText(panel, -1, "Nhập biểu thức:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_nhap = new wxTextCtrl(panel, -1, "");
         line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
         mainSizer->Add(line1, 0, wxEXPAND | wxALL, 10);
 
-        wxButton* nut = new wxButton(panel, -1, "Tính toán");
+        wxButton* nut = new wxButton(panel, -1, "Tinh toan");
         nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
         mainSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
-        line2->Add(new wxStaticText(panel, -1, "Biểu thức rút gọn:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
         mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
 
-        mainSizer->Add(new wxStaticText(panel, -1, "Mạch logic:"), 0, wxALL, 5);
+        mainSizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
         wxImage img(400, 300);
         img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
@@ -410,35 +415,35 @@ public:
 
     void OnCalculate(wxCommandEvent&) {
         string input = o_nhap->GetValue().ToStdString();
-        xuly(input);
-        auto kmap = KMap_Transformation(dsvitri);
+        xulybieuthuc(input);
+        auto kmap = biendoiKmap(dsvitri);
         auto groups = KMap_Minimization(kmap);
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        string exepath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\bin\dot.exe)";
-        string dotpath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.dot)";
-        string pngpath = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\circuit.png)";
-        string pngfolder = R"(E:\hk1_25-26\OOP_with_Cpp\FirstGUI\FirstGUI\Images)";
+        string exepath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\bin\dot.exe)";
+        string dotpath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\circuit.dot)";
+        string pngpath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\circuit.png)";
+        string pngfolder = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\Images)";
 
         if (!makeDot(ans, dotpath, pngfolder)) {
-            wxMessageBox("Không thể tạo .dot!");
+            wxMessageBox("Khong the tao .dot!");
             return;
         }
         if (!doGraph(exepath, dotpath, pngpath)) {
-            wxMessageBox("Không render được PNG!");
+            wxMessageBox("Khong render duoc PNG!");
             return;
         }
 
         Sleep(200);
         if (!fs::exists(pngpath)) {
-            wxMessageBox("Không tìm thấy file PNG!");
+            wxMessageBox("Khong tim thay file PNG!");
             return;
         }
 
         wxImage img(pngpath);
         if (!img.IsOk()) {
-            wxMessageBox("Không đọc được ảnh!");
+            wxMessageBox("Khong doc duoc anh!");
             return;
         }
 
