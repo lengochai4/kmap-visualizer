@@ -132,11 +132,11 @@ bool Inside(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) 
 bool areagiamdan(const pair<int, int>& a, const pair<int, int>& b) {
     return a.first * a.second > b.first * b.second;
 }
-
 //Rút gọn KMap
 vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
     vector<group> all;
     int row = kmap.size(), col = kmap[0].size();
+
     vector<pair<int, int>> groupsize;
     for (int r = row; r >= 1; r /= 2) {
         for (int c = col; c >= 1; c /= 2) {
@@ -149,11 +149,13 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
 
     for (pair<int, int> x : groupsize) {
         int rowsizecheck = x.first, colsizecheck = x.second;
+
         for (int startrow = 0; startrow < row; startrow++) {
             for (int startcol = 0; startcol < col; startcol++) {
                 if (FindGroup(kmap, startrow, startcol, rowsizecheck, colsizecheck)) {
                     set<pair<int, int>> test = ListGroup(startrow, startcol, rowsizecheck, colsizecheck, row, col);
                     bool next = false;
+
                     auto it = all.begin();
                     while (it != all.end()) {
                         if (it->cells == test) {
@@ -178,10 +180,12 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
                         g.startcol = startcol;
                         g.cells = std::move(test);
                         all.push_back(g);
+
                     }
                 }
             }
         }
+
     }
     return all;
 }
@@ -240,6 +244,7 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
     return output.empty() ? "0" : output;
 }
 
+
 //RENDER SANG HÌNH ẢNH
 // Kiểm tra file tồn tại
 bool kiemtrafiletontai(const string& path) {
@@ -281,9 +286,24 @@ bool makeDot(string expr, string dotf, string pngf) {
     for (auto& t : daychuoi) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
-        cAND++;
-        string aN = "A" + to_string(cAND);
-        f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
+
+        // thêm đếm biến 
+        int sobien = 0;
+        for (char c : t)
+            if (isalpha(c)) sobien++;
+
+        string target;
+
+        if (sobien > 1) {
+            cAND++;
+            string aN = "A" + to_string(cAND);
+            f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
+            target = aN;
+        }
+        else {
+            target = "OR";
+        }
+
         for (int i = 0; i < t.size(); i++) {
             char c = t[i];
             if (c == '-') continue;
@@ -294,11 +314,15 @@ bool makeDot(string expr, string dotf, string pngf) {
                 string nN = "N" + to_string(cNOT);
                 f << nN << "[shape=none,image=\"" << pngf << "\\NOT.png\"];\n";
                 f << var << "->" << nN << ";\n";
-                f << nN << "->" << aN << ";\n";
+                f << nN << "->" << target << ";\n";
             }
-            else f << var << "->" << aN << ";\n";
+            else {
+                f << var << "->" << target << ";\n";
+            }
         }
-        ANDs.push_back(aN);
+
+        if (sobien > 1)
+            ANDs.push_back(target);
     }
 
     if (ANDs.size() == 1) {
@@ -311,6 +335,7 @@ bool makeDot(string expr, string dotf, string pngf) {
         f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
         f << "OR->F;\n";
     }
+
     f << "}\n";
     f.close();
     return true;
@@ -373,31 +398,71 @@ public:
         int cols = kmap[0].size();
         int cellSize = 80;
 
-        int startX = 50;
+        int startX = 50; // chừa chỗ cho nhãn
         int startY = 50;
 
         wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
         dc.SetFont(font);
 
-        // Vẽ bảng Kmap
+        // Nhãn hàng,cột theo số biến
+        vector<string> rowLabels, colLabels;
+        if (slbien == 2) {
+            rowLabels = { "0", "1" };
+            colLabels = { "0", "1" };
+        }
+        else if (slbien == 3) {
+            rowLabels = { "0", "1" };
+            colLabels = { "00", "01", "11", "10" };
+        }
+        else if (slbien == 4) {
+            rowLabels = { "00", "01", "11", "10" };
+            colLabels = { "00", "01", "11", "10" };
+        }
+
+        // Biến xác định Kmap
+        if (slbien == 2)
+            dc.DrawText("X | Y", startX - 35, startY - 30);
+        else if (slbien == 3)
+            dc.DrawText("X | YZ", startX - 40, startY - 30);
+        else if (slbien == 4)
+            dc.DrawText("XY | ZW", startX - 50, startY - 30);
+
+
+        // Nhãn hàng
+        for (int i = 0; i < rows && i < (int)rowLabels.size(); i++) {
+            dc.DrawText(rowLabels[i],
+                startX - 30,
+                startY + i * cellSize + cellSize / 2 - 8);
+        }
+
+        // Nhãn cột
+        for (int j = 0; j < cols && j < (int)colLabels.size(); j++) {
+            dc.DrawText(colLabels[j],
+                startX + j * cellSize + cellSize / 2 - 10,
+                startY - 25);
+        }
+
+        // Vẽ các ô K-map
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 int x = startX + j * cellSize;
                 int y = startY + i * cellSize;
 
                 if (kmap[i][j])
-                    dc.SetBrush(wxBrush(wxColour(255, 200, 200))); // tô đỏ nhạt cho ô 1
+                    dc.SetBrush(wxBrush(wxColour(255, 200, 200)));
                 else
                     dc.SetBrush(*wxWHITE_BRUSH);
 
                 dc.SetPen(*wxBLACK_PEN);
                 dc.DrawRectangle(x, y, cellSize, cellSize);
 
-                dc.DrawText(kmap[i][j] ? "1" : "0", x + cellSize / 2 - 5, y + cellSize / 2 - 8);
+                dc.DrawText(kmap[i][j] ? "1" : "0",
+                    x + cellSize / 2 - 5,
+                    y + cellSize / 2 - 8);
             }
         }
 
-        //Vẽ các nhóm (khoanh vùng)
+        // Vẽ nhóm
         if (!groups.empty()) {
             int colorIndex = 0;
             vector<wxColour> colors = {
@@ -416,7 +481,6 @@ public:
                 int w = g.colsize * cellSize;
                 int h = g.rowsize * cellSize;
 
-                // Nếu nhóm chu kì thì cần vẽ riêng
                 int rows = kmap.size();
                 int cols = kmap[0].size();
 
@@ -427,12 +491,10 @@ public:
                     dc.DrawRoundedRectangle(x, y, w, h, 15);
                 }
                 else {
-                    // Vẽ 2 phần nếu vượt biên
                     if (wrapCol)
                         dc.DrawRoundedRectangle(startX, y, (g.startcol + g.colsize - cols) * cellSize, h, 15);
                     if (wrapRow)
                         dc.DrawRoundedRectangle(x, startY, w, (g.startrow + g.rowsize - rows) * cellSize, 15);
-                    // phần chính
                     dc.DrawRoundedRectangle(x % (cols * cellSize), y % (rows * cellSize),
                         min(w, cols * cellSize), min(h, rows * cellSize), 15);
                 }
@@ -509,21 +571,21 @@ public:
         string pngfolder = R"(E:\project Kmap\Images)";
 
         if (!makeDot(ans, dotpath, pngfolder)) {
-            wxMessageBox("Không thể tạo .dot!");
+            wxMessageBox("Khong the tao .dot!");
             return;
         }
         if (!doGraph(exepath, dotpath, pngpath)) {
-            wxMessageBox("Không render được PNG!");
+            wxMessageBox("Khong render duoc PNG!");
             return;
         }
         Sleep(200);
         if (!fs::exists(pngpath)) {
-            wxMessageBox("Không tìm thấy file PNG!");
+            wxMessageBox("Khong tim thay file PNG!");
             return;
         }
         wxImage img(pngpath);
         if (!img.IsOk()) {
-            wxMessageBox("Không đọc được ảnh!");
+            wxMessageBox("Khong doc duoc anh!");
             return;
         }
         img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
