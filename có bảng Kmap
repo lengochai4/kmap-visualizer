@@ -368,8 +368,7 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     return kiemtrafiletontai(pngf);
 }
 
-// Giao diện wxWidgets
-
+// Bảng Kmap hiển thị
 class KmapPanel : public wxPanel {
 public:
     vector<vector<bool>> kmap;
@@ -503,7 +502,7 @@ public:
         }
     }
 };
-
+// Giao diện wxWidgets
 class MyFrame : public wxFrame {
 public:
     KmapPanel* panelKmap;
@@ -588,7 +587,7 @@ public:
             wxMessageBox("Khong doc duoc anh!");
             return;
         }
-        img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
+        img.Rescale(1100, 770, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
     }
