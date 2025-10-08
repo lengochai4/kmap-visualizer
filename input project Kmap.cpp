@@ -196,30 +196,30 @@ vector<group> rutgon_kmap(vector<vector<bool>> kmap) {
 //BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC
 vector<string> Bits2 = { "00","01","11","10" };
 
-string IndextoBit(int index, int bitlength) {
+string vitrisangbit(int index, int bitlength) {
     if (bitlength == 0) return "";
     if (bitlength == 1) return (index == 0) ? "0" : "1";
     if (bitlength == 2) return Bits2[index];
     return "";
 }
 
-string CelltoBit(int rowindex, int colindex, int numberofvariables) {
+string nhomsangbit(int rowindex, int colindex, int numberofvariables) {
     int nua = numberofvariables / 2;
     int right = nua;
     int left = numberofvariables - nua;
 
-    string leftside = IndextoBit(rowindex, right);
-    string rightside = IndextoBit(colindex, left);
+    string leftside = vitrisangbit(rowindex, right);
+    string rightside = vitrisangbit(colindex, left);
     return leftside + rightside;
 }
 
 string GrouptoToanTu(const group& g, int numofvar) {
     auto x = g.cells.begin();
-    string change = CelltoBit(x->first, x->second, numofvar);
+    string change = nhomsangbit(x->first, x->second, numofvar);
     x++;
 
     for (; x != g.cells.end(); x++) {
-        string b = CelltoBit(x->first, x->second, numofvar);
+        string b = nhomsangbit(x->first, x->second, numofvar);
         for (int k = 0; k < numofvar; ++k) {
             if (change[k] != 'x' && change[k] != b[k]) change[k] = 'x';
         }
