@@ -15,20 +15,19 @@ using namespace std;
 namespace fs = filesystem;
 
 
-//Danh sách bit của các toán tử và số lượng biến
+//BIẾN ĐỔI INPUT
 vector<string> dsvitri;
 int slbien;
+vector<char> dsbien; //Giữ thứ tự biến để in ra sau khi rút gọn
+
 struct group {
     int rowsize, colsize;
     int startrow, startcol;
-    set<pair<int, int>> cells;  //Các nhóm bé hơn trùng với nhóm này
+    set<pair<int, int>> cells; //Các nhóm bé hơn nằm trong nhóm này
 };
-vector<char> dsbien;            //Giữ thứ tự biến để in ra sau khi rút gọn
 
-
-//====================BIẾN ĐỔI INPUT====================
-//Chuyển đổi toán tử sang bit nhị phân
-string chuyendoitbit(const string& toantu)
+//Chuyển một toán tử sang bit nhị phân
+string chuyendoi(const string& toantu)
 {
     string bits = "";
     for (int i = 0; i < toantu.length(); i++) {
@@ -37,13 +36,14 @@ string chuyendoitbit(const string& toantu)
                 if (toantu[i - 1] == '-') bits += "0";
                 else bits += "1";
             }
+            //i==0
             else bits += "1";
         }
     }
     return bits;
 }
-//Tách biểu thức thành các toán tử & chuyển đổi bit
-void xulybieuthuc(const string& bieuthuc) {
+//Tách chuỗi biểu thức thành từng toán tử và chuyển đổi bit, lưu vào dsvitri
+void xuly(const string& bieuthuc) {
     slbien = 0;
     dsvitri.clear();
     vector<char> bien;
@@ -58,53 +58,49 @@ void xulybieuthuc(const string& bieuthuc) {
     string toantu;
     while (getline(ss, toantu, '+'))
     {
-        if (!toantu.empty()) dsvitri.push_back(chuyendoitbit(toantu));
+        if (!toantu.empty()) dsvitri.push_back(chuyendoi(toantu));
     }
     dsbien = bien;
 }
 
-
-//====================BIẾN ĐỔI SANG KMAP====================
-//Đưa bit thành vị trí trong vector 2 chiều
-int bitsangvector(const string& bits) {
-    vector<string> bien2 = { "00","01","11","10" };
-
-    if (bits.size() == 1) 
-        return (bits == "1") ? 1 : 0;
-
-    if (bits.size() == 2)
-        for (int i = 0; i < bien2.size(); i++)
-            if (bits == bien2[i]) return i;
-
+//BIẾN ĐỔI SANG KMAP
+//Chuyển từ bit sang vị trí trong mảng 2 chiều
+int vitri(const string& bit) {
+    static vector<string> bits2 = { "00","01","11","10" };
+    if (bit.size() == 1)
+        return (bit == "1") ? 1 : 0;
+    if (bit.size() == 2) {
+        for (int i = 0; i < bits2.size(); i++) 
+            if (bit == bits2[i]) return i;
+    }
     return -1;
 }
 
-//Đưa tất cả bit toán tử vào K-Map
-vector<vector<bool>> biendoiKmap(const vector<string>& dsvitri) {
+//Biến đổi tất cả toán tử sang vị trí trong mảng 2 chiều
+vector<vector<bool>> biendoi_kmap(const vector<string>& dsvitri) {
     int chiadoi = slbien / 2;
-    int vectorrow = pow(2, chiadoi);
-    int vectorcol = pow(2, slbien - chiadoi);
-    vector<vector<bool>> kmap(vectorrow, vector<bool>(vectorcol, false));
+    int row = pow(2, chiadoi);
+    int col = pow(2, slbien - chiadoi);
+    vector<vector<bool>> kmap(row, vector<bool>(col, false));
 
     for (const string& x : dsvitri) {
-        int lefttorow, righttocol;
-        if (chiadoi == 0)  lefttorow = 0;
-        else lefttorow = bitsangvector(x.substr(0, chiadoi));
+        int r, c;
+        if (chiadoi == 0)  r = 0;
+        else r = vitri(x.substr(0, chiadoi));
 
-        if ((slbien - chiadoi) == 0) righttocol = 0;
-        else righttocol = bitsangvector(x.substr(chiadoi));
+        if ((slbien - chiadoi) == 0) c = 0;
+        else c = vitri(x.substr(chiadoi));
 
-        if (lefttorow >= 0 && righttocol >= 0) kmap[lefttorow][righttocol] = true;
+        if (r >= 0 && c >= 0) kmap[r][c] = true;
     }
     return kmap;
 }
 
 
-//====================RÚT GỌN BIỂU THỨC KMAP====================
+//RÚT GỌN BIỂU THỨC KMAP
 //Kiểm tra 1 nhóm có tồn tại trong mảng không
-bool FindGroup(const vector<vector<bool>>& kmap, int startrow, int startcol, int rowsizecheck, int colsizecheck) {
-    int row = kmap.size(),
-        col = kmap[0].size();
+bool timnhom(const vector<vector<bool>>& kmap, int startrow, int startcol, int rowsizecheck, int colsizecheck) {
+    int row = kmap.size(), col = kmap[0].size();
 
     for (int i = 0; i < rowsizecheck; i++) {
         for (int j = 0; j < colsizecheck; j++) {
@@ -116,8 +112,8 @@ bool FindGroup(const vector<vector<bool>>& kmap, int startrow, int startcol, int
     return true;
 }
 
-// Tạo tập các ô mà một group chiếm để so sánh
-set<pair<int, int>> ListGroup(int startrow, int startcol, int rowsize, int colsize, int row, int col) {
+// Tạo tập hợp các ô mà một nhóm chiếm để so sánh
+set<pair<int, int>> o_nhom(int startrow, int startcol, int rowsize, int colsize, int row, int col) {
     set<pair<int, int>> s;
     for (int i = 0; i < rowsize; i++) {
         for (int j = 0; j < colsize; j++) {
@@ -129,37 +125,38 @@ set<pair<int, int>> ListGroup(int startrow, int startcol, int rowsize, int colsi
     return s;
 }
 
-//Kiểm tra xem group con có nằm trong group lớn nào khác trong tập không
-bool Inside(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) {
+//Kiểm tra xem nhóm con hiện tại có nằm trong nhóm lớn nào khác hay không
+bool bentrong(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) {
     for (auto& p : smaller) if (big.find(p) == big.end()) return false;
     return true;
 }
+
 
 bool areagiamdan(const pair<int, int>& a, const pair<int, int>& b) {
     return a.first * a.second > b.first * b.second;
 }
 //Rút gọn KMap
-vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
+vector<group> rutgon_kmap(vector<vector<bool>> kmap) {
     vector<group> all;
     int row = kmap.size(), col = kmap[0].size();
 
+    //Tạo kích thước các nhóm theo 2^n
     vector<pair<int, int>> groupsize;
     for (int r = row; r >= 1; r /= 2) {
         for (int c = col; c >= 1; c /= 2) {
             groupsize.push_back({ r, c });
         }
     }
-
-    //Sắp xếp theo diện tích giảm dần
     sort(groupsize.begin(), groupsize.end(), areagiamdan);
+
 
     for (pair<int, int> x : groupsize) {
         int rowsizecheck = x.first, colsizecheck = x.second;
 
         for (int startrow = 0; startrow < row; startrow++) {
             for (int startcol = 0; startcol < col; startcol++) {
-                if (FindGroup(kmap, startrow, startcol, rowsizecheck, colsizecheck)) {
-                    set<pair<int, int>> test = ListGroup(startrow, startcol, rowsizecheck, colsizecheck, row, col);
+                if (timnhom(kmap, startrow, startcol, rowsizecheck, colsizecheck)) {
+                    set<pair<int, int>> test = o_nhom(startrow, startcol, rowsizecheck, colsizecheck, row, col);
                     bool next = false;
 
                     auto it = all.begin();
@@ -168,11 +165,11 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
                             next = true;
                             break;
                         }
-                        else if (Inside(it->cells, test)) {
+                        else if (bentrong(it->cells, test)) {
                             next = true;
                             break;
                         }
-                        else if (Inside(test, it->cells)) {
+                        else if (bentrong(test, it->cells)) {
                             it = all.erase(it);
                         }
                         else ++it;
@@ -196,7 +193,7 @@ vector<group> KMap_Minimization(vector<vector<bool>> kmap) {
     return all;
 }
 
-//====================BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC====================
+//BIỂN ĐỔI MA TRẬN RÚT GỌN SANG BIỂU THỨC
 vector<string> Bits2 = { "00","01","11","10" };
 
 string IndextoBit(int index, int bitlength) {
@@ -251,8 +248,7 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
 }
 
 
-
-//====================RENDER SANG HÌNH ẢNH====================
+//RENDER SANG HÌNH ẢNH
 // Kiểm tra file tồn tại
 bool kiemtrafiletontai(const string& path) {
     ifstream op(path);
@@ -365,7 +361,7 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     if (!ok) {
-        cerr << "Tao tien trình that bai, loi: " << GetLastError() << endl;
+        cerr << "Tạo tiến trình thất bại, lỗi: " << GetLastError() << endl;
         return false;
     }
 
@@ -375,10 +371,145 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     return kiemtrafiletontai(pngf);
 }
 
-// ===========================================================================
+// Bảng Kmap hiển thị
+class KmapPanel : public wxPanel {
+public:
+    vector<vector<bool>> kmap;
+    vector<group> groups;
+    int slbien;
+
+    KmapPanel(wxWindow* parent)
+        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(400, 400))
+    {
+        Bind(wxEVT_PAINT, &KmapPanel::OnPaint, this);
+    }
+
+    void SetData(const vector<vector<bool>>& data, const vector<group>& g, int nVar) {
+        kmap = data;
+        groups = g;
+        slbien = nVar;
+        Refresh();
+    }
+
+    void OnPaint(wxPaintEvent&) {
+        if (kmap.empty()) return;
+        wxPaintDC dc(this);
+        dc.Clear();
+
+        int rows = kmap.size();
+        int cols = kmap[0].size();
+        int cellSize = 80;
+
+        int startX = 50; // chừa chỗ cho nhãn
+        int startY = 50;
+
+        wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+        dc.SetFont(font);
+
+        // Nhãn hàng,cột theo số biến
+        vector<string> rowLabels, colLabels;
+        if (slbien == 2) {
+            rowLabels = { "0", "1" };
+            colLabels = { "0", "1" };
+        }
+        else if (slbien == 3) {
+            rowLabels = { "0", "1" };
+            colLabels = { "00", "01", "11", "10" };
+        }
+        else if (slbien == 4) {
+            rowLabels = { "00", "01", "11", "10" };
+            colLabels = { "00", "01", "11", "10" };
+        }
+
+        // Biến xác định Kmap
+        if (slbien == 2)
+            dc.DrawText("X | Y", startX - 35, startY - 30);
+        else if (slbien == 3)
+            dc.DrawText("X | YZ", startX - 40, startY - 30);
+        else if (slbien == 4)
+            dc.DrawText("XY | ZW", startX - 50, startY - 30);
+
+
+        // Nhãn hàng
+        for (int i = 0; i < rows && i < (int)rowLabels.size(); i++) {
+            dc.DrawText(rowLabels[i],
+                startX - 30,
+                startY + i * cellSize + cellSize / 2 - 8);
+        }
+
+        // Nhãn cột
+        for (int j = 0; j < cols && j < (int)colLabels.size(); j++) {
+            dc.DrawText(colLabels[j],
+                startX + j * cellSize + cellSize / 2 - 10,
+                startY - 25);
+        }
+
+        // Vẽ các ô K-map
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                int x = startX + j * cellSize;
+                int y = startY + i * cellSize;
+
+                if (kmap[i][j])
+                    dc.SetBrush(wxBrush(wxColour(255, 200, 200)));
+                else
+                    dc.SetBrush(*wxWHITE_BRUSH);
+
+                dc.SetPen(*wxBLACK_PEN);
+                dc.DrawRectangle(x, y, cellSize, cellSize);
+
+                dc.DrawText(kmap[i][j] ? "1" : "0",
+                    x + cellSize / 2 - 5,
+                    y + cellSize / 2 - 8);
+            }
+        }
+
+        // Vẽ nhóm
+        if (!groups.empty()) {
+            int colorIndex = 0;
+            vector<wxColour> colors = {
+                wxColour(255,0,0,80), wxColour(0,255,0,80),
+                wxColour(0,0,255,80), wxColour(255,255,0,80),
+                wxColour(255,0,255,80), wxColour(0,255,255,80)
+            };
+
+            for (const auto& g : groups) {
+                wxColour col = colors[colorIndex % colors.size()];
+                dc.SetPen(wxPen(col, 3, wxPENSTYLE_SOLID));
+                dc.SetBrush(wxBrush(col, wxBRUSHSTYLE_TRANSPARENT));
+
+                int x = startX + g.startcol * cellSize;
+                int y = startY + g.startrow * cellSize;
+                int w = g.colsize * cellSize;
+                int h = g.rowsize * cellSize;
+
+                int rows = kmap.size();
+                int cols = kmap[0].size();
+
+                bool wrapRow = (g.startrow + g.rowsize > rows);
+                bool wrapCol = (g.startcol + g.colsize > cols);
+
+                if (!wrapRow && !wrapCol) {
+                    dc.DrawRoundedRectangle(x, y, w, h, 15);
+                }
+                else {
+                    if (wrapCol)
+                        dc.DrawRoundedRectangle(startX, y, (g.startcol + g.colsize - cols) * cellSize, h, 15);
+                    if (wrapRow)
+                        dc.DrawRoundedRectangle(x, startY, w, (g.startrow + g.rowsize - rows) * cellSize, 15);
+                    dc.DrawRoundedRectangle(x % (cols * cellSize), y % (rows * cellSize),
+                        min(w, cols * cellSize), min(h, rows * cellSize), 15);
+                }
+                colorIndex++;
+            }
+        }
+    }
+};
 // Giao diện wxWidgets
 class MyFrame : public wxFrame {
 public:
+    KmapPanel* panelKmap;
+
     wxTextCtrl* o_nhap;
     wxTextCtrl* o_bieuthuc_rutgon;
     wxStaticBitmap* anh_mach;
@@ -387,44 +518,109 @@ public:
         Maximize(true);
         wxPanel* panel = new wxPanel(this);
 
-        wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* mainsizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* topsizer = new wxBoxSizer(wxHORIZONTAL);
+        wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
+
+        // hình logo trường 
+        wxImage logotruong("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (logotruong.IsOk())
+            logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
+        else {
+            logotruong.Create(100, 100);
+            logotruong.SetRGB(wxRect(0, 0, 100, 100), 255, 255, 255);
+        }
+        wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
+
+        // danh sách thành viên nhóm 
+        wxImage dsthanhvien("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images/danhsachtv.png", wxBITMAP_TYPE_PNG);          //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (dsthanhvien.IsOk())
+            dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
+        else {
+            dsthanhvien.Create(480, 180);
+            dsthanhvien.SetRGB(wxRect(0, 0, 480, 180), 255, 255, 255);
+        }
+        wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
+
+        // tên trường 
+        wxImage tentruong("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08/Images/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
+        if (tentruong.IsOk())
+            tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
+        else {
+            tentruong.Create(330, 50);
+            tentruong.SetRGB(wxRect(0, 0, 330, 50), 255, 255, 255);
+        }
+        wxStaticBitmap* o_tentruong = new wxStaticBitmap(panel, -1, wxBitmap(tentruong));
+
+        // gộp tên trường + logo thành 1 khung theo trục ngang 
+        wxBoxSizer* logo_tentruong_sizer = new wxBoxSizer(wxHORIZONTAL);
+        logo_tentruong_sizer->Add(o_logo, 0, wxLEFT | wxTOP | wxALIGN_LEFT, 5);
+        logo_tentruong_sizer->Add(o_tentruong, 0, wxLEFT | wxALIGN_TOP, 5);
+
+        // gộp tên trường + logo + danh sách vào 1 khung theo trục dọc 
+        leftsizer->Add(logo_tentruong_sizer, 0, wxALIGN_LEFT | wxALL, 0);
+        leftsizer->Add(o_danhsach, 0, wxTOP | wxALIGN_LEFT, 5);
+
+        wxBoxSizer* inputSizer = new wxBoxSizer(wxVERTICAL);
+
+        // ô nhập 
         wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
         line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_nhap = new wxTextCtrl(panel, -1, "");
         line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
-        mainSizer->Add(line1, 0, wxEXPAND | wxALL, 10);
+        inputSizer->Add(line1, 0, wxEXPAND | wxALL, 5);
 
         wxButton* nut = new wxButton(panel, -1, "Tinh toan");
         nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
-        mainSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
+        inputSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
         line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
-        mainSizer->Add(line2, 0, wxEXPAND | wxALL, 10);
+        inputSizer->Add(line2, 0, wxEXPAND | wxALL, 5);
 
-        mainSizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
+        topsizer->Add(leftsizer, 0, wxALIGN_TOP | wxALL, 5);
+        topsizer->Add(inputSizer, 1, wxEXPAND | wxALL, 5);
+
+        mainsizer->Add(topsizer, 0, wxEXPAND | wxALL, 5);
+
+        wxBoxSizer* mach_kmap_sizer = new wxBoxSizer(wxHORIZONTAL);
+
+        // ô mạch logic + kmap
+        wxBoxSizer* mach_sizer = new wxBoxSizer(wxVERTICAL);
+        mach_sizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
         wxImage img(400, 300);
         img.SetRGB(wxRect(0, 0, 400, 300), 255, 255, 255);
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
-        mainSizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
+        mach_sizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
+        mach_kmap_sizer->Add(mach_sizer, 1, wxEXPAND | wxALL, 5);
 
-        panel->SetSizer(mainSizer);
+        wxBoxSizer* kmap_sizer = new wxBoxSizer(wxVERTICAL);
+        kmap_sizer->Add(new wxStaticText(panel, -1, "Gom nhom K-map:"), 0, wxALL, 5);
+        panelKmap = new KmapPanel(panel);
+        kmap_sizer->Add(panelKmap, 0, wxALIGN_CENTER | wxALL, 10);
+        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxALL, 5);
+
+        mainsizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
+
+        panel->SetSizer(mainsizer);
     }
 
     void OnCalculate(wxCommandEvent&) {
         string input = o_nhap->GetValue().ToStdString();
-        xulybieuthuc(input);
-        auto kmap = biendoiKmap(dsvitri);
-        auto groups = KMap_Minimization(kmap);
+        xuly(input);
+        auto kmap = biendoi_kmap(dsvitri);
+        auto groups = rutgon_kmap(kmap);
+        panelKmap->SetData(kmap, groups, slbien);
+
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        string exepath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\bin\dot.exe)";
-        string dotpath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\circuit.dot)";
-        string pngpath = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\circuit.png)";
-        string pngfolder = R"(C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\Images)";
+        string exepath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\bin\\dot.exe)";
+        string dotpath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\circuit.dot)";
+        string pngpath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\circuit.png)";
+        string pngfolder = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images)";
 
         if (!makeDot(ans, dotpath, pngfolder)) {
             wxMessageBox("Khong the tao .dot!");
@@ -434,26 +630,22 @@ public:
             wxMessageBox("Khong render duoc PNG!");
             return;
         }
-
         Sleep(200);
         if (!fs::exists(pngpath)) {
             wxMessageBox("Khong tim thay file PNG!");
             return;
         }
-
         wxImage img(pngpath);
         if (!img.IsOk()) {
             wxMessageBox("Khong doc duoc anh!");
             return;
         }
-
-        img.Rescale(800, 500, wxIMAGE_QUALITY_HIGH);
+        img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
     }
 };
 
-// ===========================================================================
 // App chính
 class MyApp : public wxApp {
 public:
