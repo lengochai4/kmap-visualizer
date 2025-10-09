@@ -22,9 +22,6 @@ SETUP PROJECT TRƯỚC KHI CHẠY:
     | https://www.youtube.com/watch?v=ONYW3hBbk-8&list=PLJOV-tVIwUCL3NnoNg9xwLmxgFjn4co7y&index=1
 
 - Cần ISO C++ 17 Standard (Properties - C/C++ - Language).
-
-- Thay đổi địa chỉ các file hình ảnh theo User.
-    |Vd: (...)/DM-GT_PROJECT_GROUP_08/Images/LOGO.png
 */
 
 
@@ -547,7 +544,7 @@ public:
         wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
 
         //Logo trường
-        wxImage logotruong(imgdir + "/LOGO.png", wxBITMAP_TYPE_PNG);            
+        wxImage logotruong(imgdir + "/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
         if (logotruong.IsOk())
             logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
         else {
@@ -557,7 +554,7 @@ public:
         wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
 
         //Tên thành viên nhóm
-        wxImage dsthanhvien(imgdir + "/danhsachtv.png", wxBITMAP_TYPE_PNG);           
+        wxImage dsthanhvien(imgdir + "/danhsachtv.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
         if (dsthanhvien.IsOk())
             dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
         else {
@@ -567,7 +564,7 @@ public:
         wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
 
         //Tên trường
-        wxImage tentruong(imgdir + "/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           
+        wxImage tentruong(imgdir + "/tentruongSPKT.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
         if (tentruong.IsOk())
             tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
         else {
@@ -665,15 +662,15 @@ public:
 
 
         wxString exe = exedir + "/bin/dot.exe";
-        wxString pngfolder = exedir + "/Images";
-        wxString dotf = exedir + "/circuit.dot";
-        wxString pngf = exedir + "/circuit.png";
+        wxString pngf = exedir + "/Images";
+        wxString dotF = exedir + "/circuit.dot";
+        wxString pngF = exedir + "/circuit.png";
 
         // Chuyển về std::string cho phần còn lại của code
-        string exepath = string(exe.mb_str());
-        string pngfolder = string(pngfolder.mb_str());
-        string dotpath = string(dotf.mb_str());
-        string pngpath = string(pngf.mb_str());
+        std::string exepath = std::string(exe.mb_str());
+        std::string pngfolder = std::string(pngf.mb_str());
+        std::string dotpath = std::string(dotF.mb_str());
+        std::string pngpath = std::string(pngF.mb_str());
 
 
         if (!makeDot(ans, dotpath, pngfolder)) {
