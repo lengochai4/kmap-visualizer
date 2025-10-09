@@ -10,6 +10,8 @@
 #include <iostream>
 #include <math.h>
 #include <set>
+#include <climits>
+
 
 #include <fstream>
 #include <filesystem>
@@ -270,27 +272,194 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
 }
 
 //  LIỆT KÊ CÁC BIỂU THỨC RÚT GỌN
-vector<string> Lietkecacbieuthuc(const vector<group>& groups, int numofvar) {
-    vector<string> ketqua;
+struct PI_baoquat {
+    vector<group> dachon;  // tất cả các group PI
+    string bieuthuc;           // biểu thức SOP của nghiệm này (để hiển thị/chọn)
+};
 
-    // Từ tất cả các nhóm lớn, ta tạo các cách kết hợp khác nhau (tập con)
-    // Mỗi tập con nhóm phải bao phủ toàn bộ các ô 1 (các minterm)
-    // => Ở đây làm đơn giản: liệt kê toàn bộ nhóm riêng lẻ + biểu thức đầy đủ
-    for (const auto& g : groups) {
-        string expr = GrouptoToanTu(g, numofvar);
-        ketqua.push_back(expr);
+// Liệt kê tất cả ô 1 trong kmap
+static vector<pair<int, int>> lietke_o1(const vector<vector<bool>>& kmap) {
+    vector<pair<int, int>> cells;
+    for (int r = 0; r < (int)kmap.size(); ++r)
+        for (int c = 0; c < (int)kmap[0].size(); ++c)
+            if (kmap[r][c]) cells.push_back({ r,c });
+    return cells;
+}
+
+// Tạo map ô theo vị trí các PI
+static vector<vector<int>> Table_baophu(const vector<pair<int, int>>& ones,const vector<group>& PIs)
+{
+    vector<vector<int>> cover(ones.size());
+    for (int i = 0; i < (int)ones.size(); ++i) {
+        for (int j = 0; j < (int)PIs.size(); ++j) {
+            if (PIs[j].cells.count(ones[i])) cover[i].push_back(j);
+        }
+    }
+    return cover;
+}
+
+struct Chiacat_PI {
+    vector<int> essentialIdx;     // chỉ số PI là EPI
+    vector<int> remainingPIIdx;   // chỉ số PI còn lại
+    vector<int> remainingOnesIdx; // chỉ số ô 1 chưa phủ sau khi lấy EPI
+};
+
+static Chiacat_PI splitEssential(const vector<group>& PIs, const vector<pair<int, int>>& ones, const vector<vector<int>>& cover)
+{
+    int m = (int)ones.size();
+    vector<int> coverCount(m);
+    for (int i = 0; i < m; ++i) coverCount[i] = (int)cover[i].size();
+
+    vector<char> covered(m, false);
+    vector<int> essential;
+
+    // EPI: ô có coverCount == 1
+    for (int i = 0; i < m; ++i) {
+        if (coverCount[i] == 1) {
+            int epi = cover[i][0]; // chỉ số PI duy nhất
+            // chọn epi nếu chưa chọn
+            if (find(essential.begin(), essential.end(), epi) == essential.end())
+                essential.push_back(epi);
+        }
     }
 
-    // Thêm 1 biểu thức tổng hợp (rút gọn chuẩn) — như ChuoiBieuThuc()
-    string fullExpr = ChuoiBieuThuc(groups, numofvar);
-    if (find(ketqua.begin(), ketqua.end(), fullExpr) == ketqua.end())
-        ketqua.insert(ketqua.begin(), fullExpr);
+    // Đánh dấu ô được EPI phủ
+    for (int e : essential) {
+        for (int i = 0; i < m; ++i) {
+            if (!covered[i] && find(cover[i].begin(), cover[i].end(), e) != cover[i].end())
+                covered[i] = true;
+        }
+    }
 
-    // Loại bỏ trùng
-    sort(ketqua.begin(), ketqua.end());
-    ketqua.erase(unique(ketqua.begin(), ketqua.end()), ketqua.end());
+    // Ones còn lại
+    vector<int> remainingOnes;
+    for (int i = 0; i < m; ++i) if (!covered[i]) remainingOnes.push_back(i);
 
-    return ketqua;
+    // PI còn lại
+    vector<int> remainingPI;
+    for (int j = 0; j < (int)PIs.size(); ++j) {
+        if (find(essential.begin(), essential.end(), j) == essential.end())
+            remainingPI.push_back(j);
+    }
+
+    return { essential, remainingPI, remainingOnes };
+}
+
+// Tính “chi phí” một nghiệm: ưu tiên ít PI; nếu hòa, ít literal (tổng biến xuất hiện).
+static pair<int, int> costOfSolution(const vector<int>& chosenIdx,
+    const vector<group>& PIs,
+    int numVars)
+{
+    auto literalCount = [&](const group& g)->int {
+        // đếm số literal của term tương ứng group g
+        // (đếm số bit 0/1 giữ nguyên khi quy về term)
+        // đã có GrouptoToanTu -> có thể dùng string tạo ra và đếm ký tự chữ cái
+        string term = GrouptoToanTu(g, numVars);
+        int cnt = 0;
+        for (char ch : term) if (isalpha((unsigned char)ch)) ++cnt;
+        return cnt;
+        };
+    int k = (int)chosenIdx.size();
+    int lits = 0; for (int idx : chosenIdx) lits += literalCount(PIs[idx]);
+    return { k, lits };
+}
+
+// Đếm số bit 1 trong uint32_t
+static int popcount_u32(uint32_t x) {
+    int c = 0;
+    while (x) { x &= (x - 1); ++c; } // Brian Kernighan
+    return c;
+}
+
+static vector<vector<int>> findAllMinCovers_BF(
+    const vector<int>& remainingOnesIdx,
+    const vector<int>& remainingPIIdx,
+    const vector<vector<int>>& cover,
+    const vector<group>& PIs,
+    int numVars)
+{
+    vector<vector<int>> solutions;
+    pair<int, int> best = { INT_MAX, INT_MAX };
+
+    int R = (int)remainingPIIdx.size();
+
+    // (tuỳ chọn) nếu R > 31 thì bạn nên dùng backtracking thay vì bitmask 32-bit
+    // nhưng với K-map <= 4 biến thì R nhỏ nên OK.
+    uint32_t total = (R >= 31) ? 0u : (1u << R);
+    for (uint32_t mask = 0; mask < total; ++mask) {
+        int cnt = popcount_u32(mask);
+        if (cnt > best.first) continue;
+
+        bool ok = true;
+        for (int oi : remainingOnesIdx) {
+            bool covered = false;
+            for (int b = 0; b < R; ++b) if (mask & (1u << b)) {
+                int piIdx = remainingPIIdx[b];
+                if (find(cover[oi].begin(), cover[oi].end(), piIdx) != cover[oi].end()) {
+                    covered = true; break;
+                }
+            }
+            if (!covered) { ok = false; break; }
+        }
+        if (!ok) continue;
+
+        vector<int> choose;
+        for (int b = 0; b < R; ++b) if (mask & (1u << b))
+            choose.push_back(remainingPIIdx[b]);
+
+        auto cst = costOfSolution(choose, PIs, numVars);
+        if (cst < best) {
+            best = cst;
+            solutions.clear();
+            solutions.push_back(choose);
+        }
+        else if (cst == best) {
+            solutions.push_back(choose);
+        }
+    }
+    return solutions;
+}
+
+
+static vector<PI_baoquat> buildAllSolutions(
+    const vector<vector<bool>>& kmap,
+    const vector<group>& PIs,
+    int numVars)
+{
+    vector<PI_baoquat> out;
+
+    auto ones = lietke_o1(kmap);
+    if (ones.empty()) {
+        // F=0 (không có ô 1) → có thể trả 1 nghiệm trống
+        out.push_back({ {}, "0" });
+        return out;
+    }
+
+    auto cover = Table_baophu(ones, PIs);
+    auto sp = splitEssential(PIs, ones, cover);
+
+    // nếu tất cả đã được EPI phủ → chỉ 1 nghiệm = EPI
+    if (sp.remainingOnesIdx.empty()) {
+        vector<group> chosen;
+        for (int e : sp.essentialIdx) chosen.push_back(PIs[e]);
+        string expr = ChuoiBieuThuc(chosen, numVars);
+        out.push_back({ chosen, expr });
+        return out;
+    }
+
+    // tìm mọi cover tối thiểu cho phần còn lại
+    auto addSets = findAllMinCovers_BF(sp.remainingOnesIdx, sp.remainingPIIdx, cover, PIs, numVars);
+
+    // lắp thành nghiệm đầy đủ (EPI + bổ sung)
+    for (auto& choose : addSets) {
+        vector<group> chosen;
+        for (int e : sp.essentialIdx) chosen.push_back(PIs[e]);
+        for (int idx : choose)        chosen.push_back(PIs[idx]);
+
+        string expr = ChuoiBieuThuc(chosen, numVars);
+        out.push_back({ chosen, expr });
+    }
+    return out;
 }
 
 
@@ -566,11 +735,11 @@ class MyFrame : public wxFrame {
 public:
     KmapPanel* kmap_down;
     KmapPanel* kmap_up;
-
     wxTextCtrl* o_nhap;
     wxChoice* o_bieuthuc_rutgon;
     vector<string> cacbieuthucrutgon;
     wxStaticBitmap* anh_mach;
+    vector<PI_baoquat> allSolutions;
 
     MyFrame() : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(900, 600)) {
         Maximize(true);
@@ -682,73 +851,101 @@ public:
 
     //MAIN CHẠY CHÍNH
     void OnCalculate(wxCommandEvent&) {
+        // 0) Lấy input và phân tích biến + list minterm
         string input = o_nhap->GetValue().ToStdString();
-        xuly(input);
+        xuly(input);  // -> gán slbien, dsbien, dsvitri
+
+        // 1) Build K-map từ dsvitri
         auto kmap = biendoi_kmap(dsvitri);
-        // mới 
-        auto kmapSOP = biendoi_kmap(dsvitri);
-        kmap_up->SetData(kmapSOP, {}, slbien, dsbien); // không có nhóm, chỉ hiện 1/0
-        //
-        auto groups = rutgon_kmap(kmap);
-        kmap_down->SetData(kmap, groups, slbien, dsbien);
 
-        string ans = ChuoiBieuThuc(groups, slbien);
-        // Cập nhật danh sách các biểu thức rut gon
-        cacbieuthucrutgon = Lietkecacbieuthuc(groups, slbien); // Giả sử hàm này trả về vector<string> 
+        // 2) Lấy Prime Implicants
+        auto PI = rutgon_kmap(kmap);
 
+        // 3) Sinh tất cả nghiệm tối thiểu (các case)
+        allSolutions = buildAllSolutions(kmap, PI, slbien);
+
+        // 4) Đổ dropdown các “trường hợp”
         o_bieuthuc_rutgon->Clear();
-        for (auto& expr : cacbieuthucrutgon)
-            o_bieuthuc_rutgon->Append(expr);
-
-        if (!cacbieuthucrutgon.empty()) {
+        cacbieuthucrutgon.clear();
+        for (int i = 0; i < (int)allSolutions.size(); ++i) {
+            wxString label = wxString::Format("Case %d: %s", i + 1, allSolutions[i].bieuthuc);
+            o_bieuthuc_rutgon->Append(label);
+            cacbieuthucrutgon.push_back(allSolutions[i].bieuthuc);
+        }
+        if (!allSolutions.empty()) {
             o_bieuthuc_rutgon->SetSelection(0);
         }
 
-        //lấy ảnh trực tiếp 
+        // 5) Hiển thị K-map ban đầu (1/0) ở bảng trên
+        auto kmapSOP = biendoi_kmap(dsvitri);
+        kmap_up->SetData(kmapSOP, {}, slbien, dsbien);
+
+        // 6) Hiển thị K-map (nhóm) & mạch theo CASE 0 ở bảng dưới
+        if (!allSolutions.empty()) {
+            const auto& sel = allSolutions[0];
+
+            kmap_down->SetData(kmap, sel.dachon, slbien, dsbien);
+
+            // Render mạch theo expr của case 0
+            wxStandardPaths& path = wxStandardPaths::Get();
+            wxString _Exepath = path.GetExecutablePath();
+            wxFileName filename(_Exepath);
+            wxString exedir = filename.GetPath();
+
+            wxString exe = exedir + "/bin/dot.exe";
+            wxString pngf = exedir + "/Images";
+            wxString dotF = exedir + "/circuit.dot";
+            wxString pngF = exedir + "/circuit.png";
+
+            std::string exepath = std::string(exe.mb_str());
+            std::string pngfolder = std::string(pngf.mb_str());
+            std::string dotpath = std::string(dotF.mb_str());
+            std::string pngpath = std::string(pngF.mb_str());
+
+            if (makeDot(sel.bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
+                wxImage img(pngpath);
+                if (img.IsOk()) {
+                    img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
+                    anh_mach->SetBitmap(wxBitmap(img));
+                    anh_mach->Refresh();
+                }
+            }
+        }
+    }
+
+    void OnSelectExpression(wxCommandEvent&) {
+        int idx = o_bieuthuc_rutgon->GetSelection();
+        if (idx == wxNOT_FOUND || idx >= (int)allSolutions.size()) return;
+
+        // Build lại kmap từ dsvitri (vì SetData cần kmap)
+        auto kmap = biendoi_kmap(dsvitri);
+
+        // Highlight nhóm của nghiệm được chọn
+        kmap_down->SetData(kmap, allSolutions[idx].dachon, slbien, dsbien);
+
+        // Render mạch theo expr của nghiệm được chọn
         wxStandardPaths& path = wxStandardPaths::Get();
         wxString _Exepath = path.GetExecutablePath();
         wxFileName filename(_Exepath);
         wxString exedir = filename.GetPath();
-
 
         wxString exe = exedir + "/bin/dot.exe";
         wxString pngf = exedir + "/Images";
         wxString dotF = exedir + "/circuit.dot";
         wxString pngF = exedir + "/circuit.png";
 
-        // Chuyển về std::string cho phần còn lại của code
         std::string exepath = std::string(exe.mb_str());
         std::string pngfolder = std::string(pngf.mb_str());
         std::string dotpath = std::string(dotF.mb_str());
         std::string pngpath = std::string(pngF.mb_str());
 
-
-        if (!makeDot(ans, dotpath, pngfolder)) {
-            wxMessageBox("Khong the tao .dot!");
-            return;
-        }
-        if (!doGraph(exepath, dotpath, pngpath)) {
-            wxMessageBox("Khong render duoc PNG!");
-            return;
-        }
-        Sleep(200);
-        if (!fs::exists(pngpath)) {
-            wxMessageBox("Khong tim thay file PNG!");
-            return;
-        }
-        wxImage img(pngpath);
-        if (!img.IsOk()) {
-            wxMessageBox("Khong doc duoc anh!");
-            return;
-        }
-        img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
-        anh_mach->SetBitmap(wxBitmap(img));
-        anh_mach->Refresh();
-    }
-    void OnSelectExpression(wxCommandEvent&) {
-        int idx = o_bieuthuc_rutgon->GetSelection();
-        if (idx != wxNOT_FOUND && idx < (int)cacbieuthucrutgon.size()) {
-            o_bieuthuc_rutgon->SetStringSelection(cacbieuthucrutgon[idx]);
+        if (makeDot(allSolutions[idx].bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
+            wxImage img(pngpath);
+            if (img.IsOk()) {
+                img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
+                anh_mach->SetBitmap(wxBitmap(img));
+                anh_mach->Refresh();
+            }
         }
     }
 };
