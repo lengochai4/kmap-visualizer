@@ -1,6 +1,7 @@
 ﻿#include <wx/wx.h>
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <math.h>
 #include <set>
+
 #include <fstream>
 #include <filesystem>
 #include <shellapi.h>
@@ -18,10 +20,10 @@ namespace fs = filesystem;
 
 /*
 SETUP PROJECT TRƯỚC KHI CHẠY:
-- Cài đặt wxWidgets và chỉnh sửa Properties của project:
+- Cài đặt wxWidgets và chỉnh sửa Properties của project (Path):
     | https://www.youtube.com/watch?v=ONYW3hBbk-8&list=PLJOV-tVIwUCL3NnoNg9xwLmxgFjn4co7y&index=1
 
-- Cần ISO C++ 17 Standard (Properties - C/C++ - Language).
+- Cần ISO C++ 17 Standard (Properties - C/C++ - Language - C++ Language Standard).
 */
 
 
@@ -40,14 +42,24 @@ struct group {
 string chuyendoi(const string& toantu)
 {
     string bits = "";
+    bool phudinhchung = false;
     for (int i = 0; i < toantu.length(); i++) {
+        if (toantu[i] == '(' && toantu[i - 1] == '-') 
+            phudinhchung = true;
+
+        if (toantu[i] == ')') 
+            phudinhchung = false;
+
         if (isalpha(toantu[i])) {
-            if (i > 0) {
-                if (toantu[i - 1] == '-') bits += "0";
+            if (phudinhchung) bits += "0";
+            else {
+                if (i > 0) {
+                    if (toantu[i - 1] == '-') bits += "0";
+                    else bits += "1";
+                }
+                //i==0
                 else bits += "1";
             }
-            //i==0
-            else bits += "1";
         }
     }
     return bits;
@@ -135,7 +147,7 @@ set<pair<int, int>> o_nhom(int startrow, int startcol, int rowsize, int colsize,
     return s;
 }
 
-//Kiểm tra xem nhóm con hiện tại có nằm trong nhóm lớn nào khác hay không
+//Kiểm tra xem nhóm hiện tại có nằm trong nhóm lớn nào khác hay không
 bool bentrong(const set<pair<int, int>>& big, const set<pair<int, int>>& smaller) {
     for (auto& p : smaller) if (big.find(p) == big.end()) return false;
     return true;
@@ -257,6 +269,30 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
     return output.empty() ? "0" : output;
 }
 
+//  LIỆT KÊ CÁC BIỂU THỨC RÚT GỌN
+vector<string> Lietkecacbieuthuc(const vector<group>& groups, int numofvar) {
+    vector<string> ketqua;
+
+    // Từ tất cả các nhóm lớn, ta tạo các cách kết hợp khác nhau (tập con)
+    // Mỗi tập con nhóm phải bao phủ toàn bộ các ô 1 (các minterm)
+    // => Ở đây làm đơn giản: liệt kê toàn bộ nhóm riêng lẻ + biểu thức đầy đủ
+    for (const auto& g : groups) {
+        string expr = GrouptoToanTu(g, numofvar);
+        ketqua.push_back(expr);
+    }
+
+    // Thêm 1 biểu thức tổng hợp (rút gọn chuẩn) — như ChuoiBieuThuc()
+    string fullExpr = ChuoiBieuThuc(groups, numofvar);
+    if (find(ketqua.begin(), ketqua.end(), fullExpr) == ketqua.end())
+        ketqua.insert(ketqua.begin(), fullExpr);
+
+    // Loại bỏ trùng
+    sort(ketqua.begin(), ketqua.end());
+    ketqua.erase(unique(ketqua.begin(), ketqua.end()), ketqua.end());
+
+    return ketqua;
+}
+
 
 //RENDER SANG HÌNH ẢNH
 // Kiểm tra file tồn tại
@@ -287,7 +323,7 @@ bool makeDot(string expr, string dotf, string pngf) {
 
     f << "digraph G {\n";
     f << "rankdir=LR; splines=ortho; nodesep=0.6; ranksep=0.8;\n";
-    f << "node[fontsize=12, style=filled, fillcolor=lightblue];\n";
+    f << "node[fontsize=10, style=filled, fillcolor=white];\n";
 
     for (char var : dsbien)
         f << var << "[shape=circle, label=\"" << var << "\", fillcolor=\"#DDA0DD\"];\n";
@@ -310,7 +346,8 @@ bool makeDot(string expr, string dotf, string pngf) {
         if (sobien > 1) {
             cAND++;
             string aN = "A" + to_string(cAND);
-            f << aN << "[shape=none,image=\"" << pngf << "\\AND.png\"];\n";
+            f << aN << "[shape=none,image=\"" << pngf << "/AND.png\","
+                " label=\"\", imagescale=true, fixedsize=true, width=0.5, height=0.5, margin=0];\n";
             target = aN;
         }
         else {
@@ -325,7 +362,8 @@ bool makeDot(string expr, string dotf, string pngf) {
             if (i > 0 && t[i - 1] == '-') {
                 cNOT++;
                 string nN = "N" + to_string(cNOT);
-                f << nN << "[shape=none,image=\"" << pngf << "\\NOT.png\"];\n";
+                f << nN << "[shape=none,image=\"" << pngf << "/NOT.png\","
+                    "label = \"\", imagescale=true, fixedsize=true, width=0.6, height=0.6, margin=0];\n";
                 f << var << "->" << nN << ";\n";
                 f << nN << "->" << target << ";\n";
             }
@@ -343,7 +381,8 @@ bool makeDot(string expr, string dotf, string pngf) {
         f << ANDs[0] << "->F;\n";
     }
     else {
-        f << "OR[shape=none,image=\"" << pngf << "\\OR.png\"];\n";
+        f << "OR[shape=none,image=\"" << pngf << "/OR.png\","
+            "label = \"\", imagescale=true, fixedsize=true, width=0.5, height=0.5, margin=0];\n";
         for (auto& x : ANDs) f << x << "->OR;\n";
         f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
         f << "OR->F;\n";
@@ -529,7 +568,8 @@ public:
     KmapPanel* kmap_up;
 
     wxTextCtrl* o_nhap;
-    wxTextCtrl* o_bieuthuc_rutgon;
+    wxChoice* o_bieuthuc_rutgon;
+    vector<string> cacbieuthucrutgon;
     wxStaticBitmap* anh_mach;
 
     MyFrame() : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(900, 600)) {
@@ -599,10 +639,12 @@ public:
         //Ô in ra biểu thức rút gọn
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
         line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-        o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
+        o_bieuthuc_rutgon = new wxChoice(panel, wxID_ANY);
         line2->Add(o_bieuthuc_rutgon, 1, wxALL | wxEXPAND, 5);
         inputSizer->Add(line2, 0, wxEXPAND | wxALL, 5);
 
+        // Thao tác chọn biểu thức rút gọn
+        o_bieuthuc_rutgon->Bind(wxEVT_CHOICE, &MyFrame::OnSelectExpression, this);
         topsizer->Add(leftsizer, 0, wxALIGN_TOP | wxALL, 5);
         topsizer->Add(inputSizer, 1, wxEXPAND | wxALL, 5);
 
@@ -632,14 +674,13 @@ public:
         kmap_sizer->Add(kmap_down, 1, wxTOP, 0);
 
         panel->SetSizerAndFit(mainsizer);
-        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxTOP, -100);
-
-
-
+        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxTOP, -150);
 
         panel->SetSizer(mainsizer);
     }
 
+
+    //MAIN CHẠY CHÍNH
     void OnCalculate(wxCommandEvent&) {
         string input = o_nhap->GetValue().ToStdString();
         xuly(input);
@@ -652,7 +693,16 @@ public:
         kmap_down->SetData(kmap, groups, slbien, dsbien);
 
         string ans = ChuoiBieuThuc(groups, slbien);
-        o_bieuthuc_rutgon->SetValue(ans);
+        // Cập nhật danh sách các biểu thức rut gon
+        cacbieuthucrutgon = Lietkecacbieuthuc(groups, slbien); // Giả sử hàm này trả về vector<string> 
+
+        o_bieuthuc_rutgon->Clear();
+        for (auto& expr : cacbieuthucrutgon)
+            o_bieuthuc_rutgon->Append(expr);
+
+        if (!cacbieuthucrutgon.empty()) {
+            o_bieuthuc_rutgon->SetSelection(0);
+        }
 
         //lấy ảnh trực tiếp 
         wxStandardPaths& path = wxStandardPaths::Get();
@@ -694,6 +744,12 @@ public:
         img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
         anh_mach->SetBitmap(wxBitmap(img));
         anh_mach->Refresh();
+    }
+    void OnSelectExpression(wxCommandEvent&) {
+        int idx = o_bieuthuc_rutgon->GetSelection();
+        if (idx != wxNOT_FOUND && idx < (int)cacbieuthucrutgon.size()) {
+            o_bieuthuc_rutgon->SetStringSelection(cacbieuthucrutgon[idx]);
+        }
     }
 };
 
