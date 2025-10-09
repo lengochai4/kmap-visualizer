@@ -271,13 +271,13 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
     return output.empty() ? "0" : output;
 }
 
-//  LIỆT KÊ CÁC BIỂU THỨC RÚT GỌN
+//LIỆT KÊ CÁC BIỂU THỨC RÚT GỌN
 struct PI_baoquat {
-    vector<group> dachon;  // tất cả các group PI
-    string bieuthuc;           // biểu thức SOP của nghiệm này (để hiển thị/chọn)
+    vector<group> dachon;       //Tất cả các group PI
+    string bieuthuc;           //Biểu thức SOP của nghiệm này
 };
 
-// Liệt kê tất cả ô 1 trong kmap
+//Liệt kê tất cả ô 1 trong kmap
 static vector<pair<int, int>> lietke_o1(const vector<vector<bool>>& kmap) {
     vector<pair<int, int>> cells;
     for (int r = 0; r < (int)kmap.size(); ++r)
@@ -286,7 +286,7 @@ static vector<pair<int, int>> lietke_o1(const vector<vector<bool>>& kmap) {
     return cells;
 }
 
-// Tạo map ô theo vị trí các PI
+//Tạo map ô theo vị trí các PI
 static vector<vector<int>> Table_baophu(const vector<pair<int, int>>& ones,const vector<group>& PIs)
 {
     vector<vector<int>> cover(ones.size());
@@ -298,122 +298,122 @@ static vector<vector<int>> Table_baophu(const vector<pair<int, int>>& ones,const
     return cover;
 }
 
-struct Chiacat_PI {
-    vector<int> essentialIdx;     // chỉ số PI là EPI
-    vector<int> remainingPIIdx;   // chỉ số PI còn lại
-    vector<int> remainingOnesIdx; // chỉ số ô 1 chưa phủ sau khi lấy EPI
+struct PI_Chiacat {
+    vector<int> vitri_epi;          //Chỉ số PI là EPI
+    vector<int> vitri_pi_conlai;   //Chỉ số PI còn lại
+    vector<int> vitri_o1_chuaphu; //Chỉ số ô 1 chưa phủ sau khi lấy EPI
 };
 
-static Chiacat_PI splitEssential(const vector<group>& PIs, const vector<pair<int, int>>& ones, const vector<vector<int>>& cover)
+static PI_Chiacat Cat_EPI(const vector<group>& PIs, const vector<pair<int, int>>& ones, const vector<vector<int>>& cover)
 {
-    int m = (int)ones.size();
-    vector<int> coverCount(m);
-    for (int i = 0; i < m; ++i) coverCount[i] = (int)cover[i].size();
+    int m = ones.size();
+    vector<int> soluongbaophu(m);
+    for (int i = 0; i < m; ++i) soluongbaophu[i] = (int)cover[i].size();
 
-    vector<char> covered(m, false);
-    vector<int> essential;
+    vector<char> dabaophu(m, false);
+    vector<int> essentialpi;
 
-    // EPI: ô có coverCount == 1
+    //EPI: ô có soluongbaophu = 1
     for (int i = 0; i < m; ++i) {
-        if (coverCount[i] == 1) {
-            int epi = cover[i][0]; // chỉ số PI duy nhất
-            // chọn epi nếu chưa chọn
-            if (find(essential.begin(), essential.end(), epi) == essential.end())
-                essential.push_back(epi);
+        if (soluongbaophu[i] == 1) {
+            int epi = cover[i][0];
+            //Chọn epi nếu chưa chọn
+            if (find(essentialpi.begin(), essentialpi.end(), epi) == essentialpi.end())
+                essentialpi.push_back(epi);
         }
     }
 
-    // Đánh dấu ô được EPI phủ
-    for (int e : essential) {
+    //Đánh dấu ô được EPI phủ
+    for (int e : essentialpi) {
         for (int i = 0; i < m; ++i) {
-            if (!covered[i] && find(cover[i].begin(), cover[i].end(), e) != cover[i].end())
-                covered[i] = true;
+            if (!dabaophu[i] && find(cover[i].begin(), cover[i].end(), e) != cover[i].end())
+                dabaophu[i] = true;
         }
     }
 
     // Ones còn lại
-    vector<int> remainingOnes;
-    for (int i = 0; i < m; ++i) if (!covered[i]) remainingOnes.push_back(i);
+    vector<int> conlai;
+    for (int i = 0; i < m; ++i) if (!dabaophu[i]) conlai.push_back(i);
 
     // PI còn lại
-    vector<int> remainingPI;
+    vector<int> piconlai;
     for (int j = 0; j < (int)PIs.size(); ++j) {
-        if (find(essential.begin(), essential.end(), j) == essential.end())
-            remainingPI.push_back(j);
+        if (find(essentialpi.begin(), essentialpi.end(), j) == essentialpi.end())
+            piconlai.push_back(j);
     }
 
-    return { essential, remainingPI, remainingOnes };
+    return { essentialpi, piconlai, conlai };
 }
 
-// Tính “chi phí” một nghiệm: ưu tiên ít PI; nếu hòa, ít literal (tổng biến xuất hiện).
-static pair<int, int> costOfSolution(const vector<int>& chosenIdx,
-    const vector<group>& PIs,
-    int numVars)
+// Tính một nghiệm, lấy ít PI nhất
+static pair<int, int> soluongtoantu(const vector<int>& vitridachon, const vector<group>& PIs, int soluongbien)
 {
-    auto literalCount = [&](const group& g)->int {
-        // đếm số literal của term tương ứng group g
-        // (đếm số bit 0/1 giữ nguyên khi quy về term)
-        // đã có GrouptoToanTu -> có thể dùng string tạo ra và đếm ký tự chữ cái
-        string term = GrouptoToanTu(g, numVars);
-        int cnt = 0;
-        for (char ch : term) if (isalpha((unsigned char)ch)) ++cnt;
-        return cnt;
-        };
-    int k = (int)chosenIdx.size();
-    int lits = 0; for (int idx : chosenIdx) lits += literalCount(PIs[idx]);
+    auto dembien = [&](const group& g)->int {
+
+        string term = GrouptoToanTu(g, soluongbien);
+        int dem = 0;
+        for (char ch : term) {
+            if (isalpha((unsigned char)ch)) dem++;
+        }
+        return dem;
+    };
+    int k = vitridachon.size();
+    int lits = 0;
+    for (int vitri : vitridachon) {
+        lits += dembien(PIs[vitri]);
+    }
     return { k, lits };
 }
 
-// Đếm số bit 1 trong uint32_t
-static int popcount_u32(uint32_t x) {
+// Đếm số bit 1
+static int dembit1(uint32_t x) {
     int c = 0;
-    while (x) { x &= (x - 1); ++c; } // Brian Kernighan
+    while (x) { 
+        x &= (x - 1); ++c;
+    }
     return c;
 }
 
-static vector<vector<int>> findAllMinCovers_BF(
-    const vector<int>& remainingOnesIdx,
-    const vector<int>& remainingPIIdx,
-    const vector<vector<int>>& cover,
-    const vector<group>& PIs,
-    int numVars)
+static vector<vector<int>> tim_baophumin(const vector<int>& vitri_o1_chuaphu, const vector<int>& vitri_pi_conlai,
+    const vector<vector<int>>& baophu, const vector<group>& PIs, int soluongbien)
 {
     vector<vector<int>> solutions;
-    pair<int, int> best = { INT_MAX, INT_MAX };
+    pair<int, int> totnhat = { INT_MAX, INT_MAX };
 
-    int R = (int)remainingPIIdx.size();
+    int R = vitri_pi_conlai.size();
 
-    // (tuỳ chọn) nếu R > 31 thì bạn nên dùng backtracking thay vì bitmask 32-bit
-    // nhưng với K-map <= 4 biến thì R nhỏ nên OK.
     uint32_t total = (R >= 31) ? 0u : (1u << R);
     for (uint32_t mask = 0; mask < total; ++mask) {
-        int cnt = popcount_u32(mask);
-        if (cnt > best.first) continue;
+        int cnt = dembit1(mask);
+        if (cnt > totnhat.first) continue;
 
         bool ok = true;
-        for (int oi : remainingOnesIdx) {
+        for (int oi : vitri_pi_conlai) {
             bool covered = false;
-            for (int b = 0; b < R; ++b) if (mask & (1u << b)) {
-                int piIdx = remainingPIIdx[b];
-                if (find(cover[oi].begin(), cover[oi].end(), piIdx) != cover[oi].end()) {
-                    covered = true; break;
+            for (int b = 0; b < R; ++b)
+                if (mask & (1u << b)) {
+                    int piIdx = vitri_pi_conlai[b];
+                    if (find(baophu[oi].begin(), baophu[oi].end(), piIdx) != baophu[oi].end()) {
+                        covered = true; break;
                 }
             }
-            if (!covered) { ok = false; break; }
+            if (!covered) {
+                ok = false; break;
+            }
         }
         if (!ok) continue;
 
         vector<int> choose;
         for (int b = 0; b < R; ++b) if (mask & (1u << b))
-            choose.push_back(remainingPIIdx[b]);
+            choose.push_back(vitri_pi_conlai[b]);
 
-        auto cst = costOfSolution(choose, PIs, numVars);
-        if (cst < best) {
-            best = cst;
+        auto cst = soluongtoantu(choose, PIs, soluongbien);
+        if (cst < totnhat) {
+            totnhat = cst;
             solutions.clear();
             solutions.push_back(choose);
         }
-        else if (cst == best) {
+        else if (cst == totnhat) {
             solutions.push_back(choose);
         }
     }
@@ -421,42 +421,39 @@ static vector<vector<int>> findAllMinCovers_BF(
 }
 
 
-static vector<PI_baoquat> buildAllSolutions(
-    const vector<vector<bool>>& kmap,
-    const vector<group>& PIs,
-    int numVars)
+static vector<PI_baoquat> build_tatcaDapan(const vector<vector<bool>>& kmap, const vector<group>& PIs, int soluongbien)
 {
     vector<PI_baoquat> out;
 
     auto ones = lietke_o1(kmap);
     if (ones.empty()) {
-        // F=0 (không có ô 1) → có thể trả 1 nghiệm trống
+        //Không có trả về nghiệm trống
         out.push_back({ {}, "0" });
         return out;
     }
 
     auto cover = Table_baophu(ones, PIs);
-    auto sp = splitEssential(PIs, ones, cover);
+    auto sp = Cat_EPI(PIs, ones, cover);
 
-    // nếu tất cả đã được EPI phủ → chỉ 1 nghiệm = EPI
-    if (sp.remainingOnesIdx.empty()) {
+    //Tất cả được EPI phủ, trả về chính nó
+    if (sp.vitri_o1_chuaphu.empty()) {
         vector<group> chosen;
-        for (int e : sp.essentialIdx) chosen.push_back(PIs[e]);
-        string expr = ChuoiBieuThuc(chosen, numVars);
+        for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
+        string expr = ChuoiBieuThuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
         return out;
     }
 
-    // tìm mọi cover tối thiểu cho phần còn lại
-    auto addSets = findAllMinCovers_BF(sp.remainingOnesIdx, sp.remainingPIIdx, cover, PIs, numVars);
+    //Tìm mọi nhóm tối thiểu cho phần còn lại
+    auto themnhom = tim_baophumin(sp.vitri_o1_chuaphu, sp.vitri_pi_conlai, cover, PIs, soluongbien);
 
-    // lắp thành nghiệm đầy đủ (EPI + bổ sung)
-    for (auto& choose : addSets) {
+    //Lắp thành nghiệm đầy đủ (EPI + bổ sung)
+    for (auto& choose : themnhom) {
         vector<group> chosen;
-        for (int e : sp.essentialIdx) chosen.push_back(PIs[e]);
-        for (int idx : choose)        chosen.push_back(PIs[idx]);
+        for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
+        for (int x : choose)        chosen.push_back(PIs[x]);
 
-        string expr = ChuoiBieuThuc(chosen, numVars);
+        string expr = ChuoiBieuThuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
     }
     return out;
@@ -851,20 +848,15 @@ public:
 
     //MAIN CHẠY CHÍNH
     void OnCalculate(wxCommandEvent&) {
-        // 0) Lấy input và phân tích biến + list minterm
         string input = o_nhap->GetValue().ToStdString();
         xuly(input);  // -> gán slbien, dsbien, dsvitri
 
-        // 1) Build K-map từ dsvitri
         auto kmap = biendoi_kmap(dsvitri);
 
-        // 2) Lấy Prime Implicants
         auto PI = rutgon_kmap(kmap);
 
-        // 3) Sinh tất cả nghiệm tối thiểu (các case)
-        allSolutions = buildAllSolutions(kmap, PI, slbien);
+        allSolutions = build_tatcaDapan(kmap, PI, slbien);
 
-        // 4) Đổ dropdown các “trường hợp”
         o_bieuthuc_rutgon->Clear();
         cacbieuthucrutgon.clear();
         for (int i = 0; i < (int)allSolutions.size(); ++i) {
@@ -876,17 +868,15 @@ public:
             o_bieuthuc_rutgon->SetSelection(0);
         }
 
-        // 5) Hiển thị K-map ban đầu (1/0) ở bảng trên
         auto kmapSOP = biendoi_kmap(dsvitri);
         kmap_up->SetData(kmapSOP, {}, slbien, dsbien);
 
-        // 6) Hiển thị K-map (nhóm) & mạch theo CASE 0 ở bảng dưới
         if (!allSolutions.empty()) {
             const auto& sel = allSolutions[0];
 
             kmap_down->SetData(kmap, sel.dachon, slbien, dsbien);
 
-            // Render mạch theo expr của case 0
+            // Render mạch theo biểu thức ban đầu
             wxStandardPaths& path = wxStandardPaths::Get();
             wxString _Exepath = path.GetExecutablePath();
             wxFileName filename(_Exepath);
@@ -917,13 +907,10 @@ public:
         int idx = o_bieuthuc_rutgon->GetSelection();
         if (idx == wxNOT_FOUND || idx >= (int)allSolutions.size()) return;
 
-        // Build lại kmap từ dsvitri (vì SetData cần kmap)
         auto kmap = biendoi_kmap(dsvitri);
 
-        // Highlight nhóm của nghiệm được chọn
         kmap_down->SetData(kmap, allSolutions[idx].dachon, slbien, dsbien);
 
-        // Render mạch theo expr của nghiệm được chọn
         wxStandardPaths& path = wxStandardPaths::Get();
         wxString _Exepath = path.GetExecutablePath();
         wxFileName filename(_Exepath);
