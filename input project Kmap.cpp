@@ -12,7 +12,6 @@
 #include <set>
 #include <climits>
 
-
 #include <fstream>
 #include <filesystem>
 #include <shellapi.h>
@@ -46,10 +45,10 @@ string chuyendoi(const string& toantu)
     string bits = "";
     bool phudinhchung = false;
     for (int i = 0; i < toantu.length(); i++) {
-        if (toantu[i] == '(' && toantu[i - 1] == '-') 
+        if (toantu[i] == '(' && toantu[i - 1] == '-')
             phudinhchung = true;
 
-        if (toantu[i] == ')') 
+        if (toantu[i] == ')')
             phudinhchung = false;
 
         if (isalpha(toantu[i])) {
@@ -258,7 +257,7 @@ string GrouptoToanTu(const group& g, int numofvar) {
     return toantu;
 }
 
-string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
+string chuoibieuthuc(const vector<group>& groups, int numofvar) {
     set<string> unique;
 
     for (const auto& g : groups) unique.insert(GrouptoToanTu(g, numofvar));
@@ -272,9 +271,9 @@ string ChuoiBieuThuc(const vector<group>& groups, int numofvar) {
 }
 
 //LIỆT KÊ CÁC BIỂU THỨC RÚT GỌN
-struct PI_baoquat {
-    vector<group> dachon;       //Tất cả các group PI
-    string bieuthuc;           //Biểu thức SOP của nghiệm này
+struct PIbaoquat {
+    vector<group> dachon;
+    string bieuthuc;
 };
 
 //Liệt kê tất cả ô 1 trong kmap
@@ -287,7 +286,7 @@ static vector<pair<int, int>> lietke_o1(const vector<vector<bool>>& kmap) {
 }
 
 //Tạo map ô theo vị trí các PI
-static vector<vector<int>> Table_baophu(const vector<pair<int, int>>& ones,const vector<group>& PIs)
+static vector<vector<int>> tablebaophu(const vector<pair<int, int>>& ones, const vector<group>& PIs)
 {
     vector<vector<int>> cover(ones.size());
     for (int i = 0; i < (int)ones.size(); ++i) {
@@ -317,13 +316,11 @@ static PI_Chiacat Cat_EPI(const vector<group>& PIs, const vector<pair<int, int>>
     for (int i = 0; i < m; ++i) {
         if (soluongbaophu[i] == 1) {
             int epi = cover[i][0];
-            //Chọn epi nếu chưa chọn
             if (find(essentialpi.begin(), essentialpi.end(), epi) == essentialpi.end())
                 essentialpi.push_back(epi);
         }
     }
 
-    //Đánh dấu ô được EPI phủ
     for (int e : essentialpi) {
         for (int i = 0; i < m; ++i) {
             if (!dabaophu[i] && find(cover[i].begin(), cover[i].end(), e) != cover[i].end())
@@ -331,11 +328,9 @@ static PI_Chiacat Cat_EPI(const vector<group>& PIs, const vector<pair<int, int>>
         }
     }
 
-    // Ones còn lại
     vector<int> conlai;
     for (int i = 0; i < m; ++i) if (!dabaophu[i]) conlai.push_back(i);
 
-    // PI còn lại
     vector<int> piconlai;
     for (int j = 0; j < (int)PIs.size(); ++j) {
         if (find(essentialpi.begin(), essentialpi.end(), j) == essentialpi.end())
@@ -356,7 +351,7 @@ static pair<int, int> soluongtoantu(const vector<int>& vitridachon, const vector
             if (isalpha((unsigned char)ch)) dem++;
         }
         return dem;
-    };
+        };
     int k = vitridachon.size();
     int lits = 0;
     for (int vitri : vitridachon) {
@@ -365,22 +360,21 @@ static pair<int, int> soluongtoantu(const vector<int>& vitridachon, const vector
     return { k, lits };
 }
 
-// Đếm số bit 1
+// Đếm bit 1
 static int dembit1(uint32_t x) {
     int c = 0;
-    while (x) { 
+    while (x) {
         x &= (x - 1); ++c;
     }
     return c;
 }
 
-static vector<vector<int>> tim_baophumin(const vector<int>& vitri_o1_chuaphu, const vector<int>& vitri_pi_conlai,
-    const vector<vector<int>>& baophu, const vector<group>& PIs, int soluongbien)
+static vector<vector<int>> timbaophumin(const vector<int>& vitrio1_chuaphu, const vector<int>& vitripiconlai, const vector<vector<int>>& baophu, const vector<group>& PIs, int soluongbien)
 {
     vector<vector<int>> solutions;
     pair<int, int> totnhat = { INT_MAX, INT_MAX };
 
-    int R = vitri_pi_conlai.size();
+    int R = vitripiconlai.size();
 
     uint32_t total = (R >= 31) ? 0u : (1u << R);
     for (uint32_t mask = 0; mask < total; ++mask) {
@@ -388,15 +382,15 @@ static vector<vector<int>> tim_baophumin(const vector<int>& vitri_o1_chuaphu, co
         if (cnt > totnhat.first) continue;
 
         bool ok = true;
-        for (int oi : vitri_pi_conlai) {
+        for (int oi : vitripiconlai) {
             bool covered = false;
             for (int b = 0; b < R; ++b)
                 if (mask & (1u << b)) {
-                    int piIdx = vitri_pi_conlai[b];
+                    int piIdx = vitripiconlai[b];
                     if (find(baophu[oi].begin(), baophu[oi].end(), piIdx) != baophu[oi].end()) {
                         covered = true; break;
+                    }
                 }
-            }
             if (!covered) {
                 ok = false; break;
             }
@@ -405,7 +399,7 @@ static vector<vector<int>> tim_baophumin(const vector<int>& vitri_o1_chuaphu, co
 
         vector<int> choose;
         for (int b = 0; b < R; ++b) if (mask & (1u << b))
-            choose.push_back(vitri_pi_conlai[b]);
+            choose.push_back(vitripiconlai[b]);
 
         auto cst = soluongtoantu(choose, PIs, soluongbien);
         if (cst < totnhat) {
@@ -421,44 +415,40 @@ static vector<vector<int>> tim_baophumin(const vector<int>& vitri_o1_chuaphu, co
 }
 
 
-static vector<PI_baoquat> build_tatcaDapan(const vector<vector<bool>>& kmap, const vector<group>& PIs, int soluongbien)
+static vector<PIbaoquat> buildtatcadapan(const vector<vector<bool>>& kmap, const vector<group>& PIs, int soluongbien)
 {
-    vector<PI_baoquat> out;
+    vector<PIbaoquat> out;
 
     auto ones = lietke_o1(kmap);
     if (ones.empty()) {
-        //Không có trả về nghiệm trống
         out.push_back({ {}, "0" });
         return out;
     }
 
-    auto cover = Table_baophu(ones, PIs);
+    auto cover = tablebaophu(ones, PIs);
     auto sp = Cat_EPI(PIs, ones, cover);
 
     //Tất cả được EPI phủ, trả về chính nó
     if (sp.vitri_o1_chuaphu.empty()) {
         vector<group> chosen;
         for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
-        string expr = ChuoiBieuThuc(chosen, soluongbien);
+        string expr = chuoibieuthuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
         return out;
     }
+    auto themnhom = timbaophumin(sp.vitri_o1_chuaphu, sp.vitri_pi_conlai, cover, PIs, soluongbien);
 
-    //Tìm mọi nhóm tối thiểu cho phần còn lại
-    auto themnhom = tim_baophumin(sp.vitri_o1_chuaphu, sp.vitri_pi_conlai, cover, PIs, soluongbien);
-
-    //Lắp thành nghiệm đầy đủ (EPI + bổ sung)
+    //Lắp thành nghiệm đầy đủ 
     for (auto& choose : themnhom) {
         vector<group> chosen;
         for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
-        for (int x : choose)        chosen.push_back(PIs[x]);
+        for (int x : choose) chosen.push_back(PIs[x]);
 
-        string expr = ChuoiBieuThuc(chosen, soluongbien);
+        string expr = chuoibieuthuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
     }
     return out;
 }
-
 
 //RENDER SANG HÌNH ẢNH
 // Kiểm tra file tồn tại
@@ -482,7 +472,7 @@ vector<string> tachchuoi(const string& s, char phancach) {
     return daycactich;
 }
 
-// Tạo file .dot cho Graphviz
+// Tạo file dot cho graphviz
 bool makeDot(string expr, string dotf, string pngf) {
     ofstream f(dotf);
     if (!f.is_open()) return false;
@@ -502,7 +492,7 @@ bool makeDot(string expr, string dotf, string pngf) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
 
-        // thêm đếm biến 
+        // thêm đếm biến
         int sobien = 0;
         for (char c : t)
             if (isalpha(c)) sobien++;
@@ -559,7 +549,7 @@ bool makeDot(string expr, string dotf, string pngf) {
     return true;
 }
 
-// Gọi Graphviz để render PNG
+// Gọi graphviz để render PNG
 bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     if (!kiemtrafiletontai(exe) || !kiemtrafiletontai(dotf)) return false;
 
@@ -586,7 +576,7 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     return kiemtrafiletontai(pngf);
 }
 
-// Bảng Kmap hiển thị
+// Bảng kmap hiển thị
 class KmapPanel : public wxPanel {
 public:
     vector<vector<bool>> kmap;
@@ -617,7 +607,7 @@ public:
         int cols = kmap[0].size();
         int cellSize = 80;
 
-        int startX = 50; // chừa chỗ cho nhãn
+        int startX = 50;
         int startY = 50;
 
         wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
@@ -638,7 +628,7 @@ public:
             colLabels = { "00", "01", "11", "10" };
         }
 
-        // Biến xác định Kmap
+        // Biến xác định kmap
         if (slbien == 2) {
             string var = string(1, variables[0]) + "|" + string(1, variables[1]);
             dc.DrawText(wxString(var), startX - 35, startY - 30);
@@ -666,7 +656,7 @@ public:
                 startY - 25);
         }
 
-        // Vẽ các ô K-map
+        // Vẽ các ô kmap
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 int x = startX + j * cellSize;
@@ -736,7 +726,7 @@ public:
     wxChoice* o_bieuthuc_rutgon;
     vector<string> cacbieuthucrutgon;
     wxStaticBitmap* anh_mach;
-    vector<PI_baoquat> allSolutions;
+    vector<PIbaoquat> allSolutions;
 
     MyFrame() : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(900, 600)) {
         Maximize(true);
@@ -750,7 +740,7 @@ public:
         wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
 
         //Logo trường
-        wxImage logotruong(imgdir + "/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage logotruong(imgdir + "/LOGO.png", wxBITMAP_TYPE_PNG);
         if (logotruong.IsOk())
             logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
         else {
@@ -760,7 +750,7 @@ public:
         wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
 
         //Tên thành viên nhóm
-        wxImage dsthanhvien(imgdir + "/danhsachtv.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage dsthanhvien(imgdir + "/danhsachtv.png", wxBITMAP_TYPE_PNG);
         if (dsthanhvien.IsOk())
             dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
         else {
@@ -770,7 +760,7 @@ public:
         wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
 
         //Tên trường
-        wxImage tentruong(imgdir + "/tentruongSPKT.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage tentruong(imgdir + "/tentruongSPKT.png", wxBITMAP_TYPE_PNG);
         if (tentruong.IsOk())
             tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
         else {
@@ -855,7 +845,7 @@ public:
 
         auto PI = rutgon_kmap(kmap);
 
-        allSolutions = build_tatcaDapan(kmap, PI, slbien);
+        allSolutions = buildtatcadapan(kmap, PI, slbien);
 
         o_bieuthuc_rutgon->Clear();
         cacbieuthucrutgon.clear();
@@ -887,10 +877,10 @@ public:
             wxString dotF = exedir + "/circuit.dot";
             wxString pngF = exedir + "/circuit.png";
 
-            std::string exepath = std::string(exe.mb_str());
-            std::string pngfolder = std::string(pngf.mb_str());
-            std::string dotpath = std::string(dotF.mb_str());
-            std::string pngpath = std::string(pngF.mb_str());
+            string exepath = string(exe.mb_str());
+            string pngfolder = string(pngf.mb_str());
+            string dotpath = string(dotF.mb_str());
+            string pngpath = string(pngF.mb_str());
 
             if (makeDot(sel.bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
                 wxImage img(pngpath);
@@ -921,10 +911,10 @@ public:
         wxString dotF = exedir + "/circuit.dot";
         wxString pngF = exedir + "/circuit.png";
 
-        std::string exepath = std::string(exe.mb_str());
-        std::string pngfolder = std::string(pngf.mb_str());
-        std::string dotpath = std::string(dotF.mb_str());
-        std::string pngpath = std::string(pngF.mb_str());
+        string exepath = string(exe.mb_str());
+        string pngfolder = string(pngf.mb_str());
+        string dotpath = string(dotF.mb_str());
+        string pngpath = string(pngF.mb_str());
 
         if (makeDot(allSolutions[idx].bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
             wxImage img(pngpath);
