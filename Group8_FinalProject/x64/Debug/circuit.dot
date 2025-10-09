@@ -1,11 +1,13 @@
 digraph G {
 rankdir=LR; splines=ortho; nodesep=0.6; ranksep=0.8;
 node[fontsize=12, style=filled, fillcolor=lightblue];
-w[shape=circle, label="w", fillcolor="#DDA0DD"];
+x[shape=circle, label="x", fillcolor="#DDA0DD"];
 y[shape=circle, label="y", fillcolor="#DDA0DD"];
 z[shape=circle, label="z", fillcolor="#DDA0DD"];
-z->OR;
-OR[shape=none,image="C:\Users\LeFat\OneDrive\Desktop\DM-GT_PROJECT_GROUP_08\Images\OR.png"];
+A1[shape=none,image="E:\hk1_25-26\OOP_with_Cpp\FirstGUI\x64\Debug/Images\AND.png"];
+x->A1;
+y->A1;
+z->A1;
 F[shape=doublecircle,label="F",fillcolor="#FFA07A"];
-OR->F;
+A1->F;
 }

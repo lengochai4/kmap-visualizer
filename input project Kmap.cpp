@@ -1,4 +1,6 @@
 ﻿#include <wx/wx.h>
+#include <wx/stdpaths.h>
+#include <wx/filename.h>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -16,7 +18,7 @@ namespace fs = filesystem;
 
 /*
 SETUP PROJECT TRƯỚC KHI CHẠY:
-- Cài đặt wxWidgets và chỉnh sửa Properties của project: 
+- Cài đặt wxWidgets và chỉnh sửa Properties của project:
     | https://www.youtube.com/watch?v=ONYW3hBbk-8&list=PLJOV-tVIwUCL3NnoNg9xwLmxgFjn4co7y&index=1
 
 - Cần ISO C++ 17 Standard (Properties - C/C++ - Language).
@@ -81,7 +83,7 @@ int vitri(const string& bit) {
     if (bit.size() == 1)
         return (bit == "1") ? 1 : 0;
     if (bit.size() == 2) {
-        for (int i = 0; i < bits2.size(); i++) 
+        for (int i = 0; i < bits2.size(); i++)
             if (bit == bits2[i]) return i;
     }
     return -1;
@@ -372,7 +374,7 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     if (!ok) {
-        cerr << "Tạo tiến trình thất bại, lỗi: " << GetLastError() << endl;
+        cerr << "Tao tien trinh that bai,loi! " << GetLastError() << endl;
         return false;
     }
 
@@ -442,7 +444,7 @@ public:
         else if (slbien == 3) {
             string var = string(1, variables[0]) + "|" + string(1, variables[1]) + string(1, variables[2]);
             dc.DrawText(wxString(var), startX - 40, startY - 30);
-        }   
+        }
         else if (slbien == 4) {
             string var = string(1, variables[0]) + string(1, variables[1]) + "|" + string(1, variables[2]) + string(1, variables[3]);
             dc.DrawText(wxString(var), startX - 50, startY - 30);
@@ -536,13 +538,16 @@ public:
     MyFrame() : wxFrame(NULL, wxID_ANY, "K-map Tool", wxDefaultPosition, wxSize(900, 600)) {
         Maximize(true);
         wxPanel* panel = new wxPanel(this);
+        wxStandardPaths& path = wxStandardPaths::Get();
+        wxString exedir = wxFileName(path.GetExecutablePath()).GetPath();
+        wxString imgdir = exedir + "/Images";
 
         wxBoxSizer* mainsizer = new wxBoxSizer(wxVERTICAL);
         wxBoxSizer* topsizer = new wxBoxSizer(wxHORIZONTAL);
         wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
 
         //Logo trường
-        wxImage logotruong("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage logotruong(imgdir + "/LOGO.png", wxBITMAP_TYPE_PNG);            
         if (logotruong.IsOk())
             logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
         else {
@@ -552,7 +557,7 @@ public:
         wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
 
         //Tên thành viên nhóm
-        wxImage dsthanhvien("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/danhsachtv.png", wxBITMAP_TYPE_PNG);          //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage dsthanhvien(imgdir + "/danhsachtv.png", wxBITMAP_TYPE_PNG);           
         if (dsthanhvien.IsOk())
             dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
         else {
@@ -562,7 +567,7 @@ public:
         wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
 
         //Tên trường
-        wxImage tentruong("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
+        wxImage tentruong(imgdir + "/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           
         if (tentruong.IsOk())
             tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
         else {
@@ -617,7 +622,7 @@ public:
         mach_sizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
         mach_kmap_sizer->Add(mach_sizer, 1, wxEXPAND | wxALL, 5);
         mainsizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 0);
-        
+
 
         //Bảng kmap
         wxBoxSizer* kmap_sizer = new wxBoxSizer(wxVERTICAL);
@@ -633,7 +638,7 @@ public:
         mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxTOP, -100);
 
 
-        
+
 
         panel->SetSizer(mainsizer);
     }
@@ -652,10 +657,24 @@ public:
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        string exepath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/bin/dot.exe)";
-        string dotpath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/circuit.dot)";
-        string pngpath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/circuit.png)";
-        string pngfolder = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images)";
+        //lấy ảnh trực tiếp 
+        wxStandardPaths& path = wxStandardPaths::Get();
+        wxString _Exepath = path.GetExecutablePath();
+        wxFileName filename(_Exepath);
+        wxString exedir = filename.GetPath();
+
+
+        wxString exe = exedir + "/bin/dot.exe";
+        wxString pngfolder = exedir + "/Images";
+        wxString dotf = exedir + "/circuit.dot";
+        wxString pngf = exedir + "/circuit.png";
+
+        // Chuyển về std::string cho phần còn lại của code
+        string exepath = string(exe.mb_str());
+        string pngfolder = string(pngfolder.mb_str());
+        string dotpath = string(dotf.mb_str());
+        string pngpath = string(pngf.mb_str());
+
 
         if (!makeDot(ans, dotpath, pngfolder)) {
             wxMessageBox("Khong the tao .dot!");
