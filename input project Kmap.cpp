@@ -12,6 +12,7 @@
 #include <set>
 #include <climits>
 
+
 #include <fstream>
 #include <filesystem>
 #include <shellapi.h>
@@ -303,7 +304,7 @@ struct PI_Chiacat {
     vector<int> vitri_o1_chuaphu; //Chỉ số ô 1 chưa phủ sau khi lấy EPI
 };
 
-static PI_Chiacat Cat_EPI(const vector<group>& PIs, const vector<pair<int, int>>& ones, const vector<vector<int>>& cover)
+static PI_Chiacat CatEPI(const vector<group>& PIs, const vector<pair<int, int>>& ones, const vector<vector<int>>& cover)
 {
     int m = ones.size();
     vector<int> soluongbaophu(m);
@@ -426,7 +427,7 @@ static vector<PIbaoquat> buildtatcadapan(const vector<vector<bool>>& kmap, const
     }
 
     auto cover = tablebaophu(ones, PIs);
-    auto sp = Cat_EPI(PIs, ones, cover);
+    auto sp = CatEPI(PIs, ones, cover);
 
     //Tất cả được EPI phủ, trả về chính nó
     if (sp.vitri_o1_chuaphu.empty()) {
@@ -434,18 +435,38 @@ static vector<PIbaoquat> buildtatcadapan(const vector<vector<bool>>& kmap, const
         for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
         string expr = chuoibieuthuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
+        vector<int> nonEPI = sp.vitri_pi_conlai;
+        for (int pi : nonEPI) {
+            vector<group> newChosen = chosen;
+            newChosen.push_back(PIs[pi]);
+            string expr2 = chuoibieuthuc(newChosen, soluongbien);
+            out.push_back({ newChosen, expr2 });
+        }
         return out;
     }
     auto themnhom = timbaophumin(sp.vitri_o1_chuaphu, sp.vitri_pi_conlai, cover, PIs, soluongbien);
 
     //Lắp thành nghiệm đầy đủ 
-    for (auto& choose : themnhom) {
-        vector<group> chosen;
-        for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
-        for (int x : choose) chosen.push_back(PIs[x]);
+    for (auto& nhomchon : themnhom) {
+        vector<group> nhomdachon;
+        for (int e : sp.vitri_epi) nhomdachon.push_back(PIs[e]);
+        for (int x : nhomchon) nhomdachon.push_back(PIs[x]);
 
-        string expr = chuoibieuthuc(chosen, soluongbien);
-        out.push_back({ chosen, expr });
+        string expr = chuoibieuthuc(nhomdachon, soluongbien);
+        out.push_back({ nhomdachon, expr });
+
+        // Thêm từng non essential để lấy các term phụ
+        vector<int> pichuaphu;
+        for (int pi : sp.vitri_pi_conlai) {
+            if (find(nhomchon.begin(), nhomchon.end(), pi) == nhomchon.end())
+                pichuaphu.push_back(pi);
+        }
+        for (int pi : pichuaphu) {
+            vector<group> nhommoi = nhomdachon;
+            nhommoi.push_back(PIs[pi]);
+            string expr2 = chuoibieuthuc(nhommoi, soluongbien);
+            out.push_back({ nhommoi, expr2 });
+        }
     }
     return out;
 }
