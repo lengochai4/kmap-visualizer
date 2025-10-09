@@ -14,6 +14,17 @@
 using namespace std;
 namespace fs = filesystem;
 
+/*
+SETUP PROJECT TRƯỚC KHI CHẠY:
+- Cài đặt wxWidgets và chỉnh sửa Properties của project: 
+    | https://www.youtube.com/watch?v=ONYW3hBbk-8&list=PLJOV-tVIwUCL3NnoNg9xwLmxgFjn4co7y&index=1
+
+- Cần ISO C++ 17 Standard (Properties - C/C++ - Language).
+
+- Thay đổi địa chỉ các file hình ảnh theo User.
+    |Vd: (...)/DM-GT_PROJECT_GROUP_08/Images/LOGO.png
+*/
+
 
 //BIẾN ĐỔI INPUT
 vector<string> dsvitri;
@@ -377,6 +388,7 @@ public:
     vector<vector<bool>> kmap;
     vector<group> groups;
     int slbien;
+    vector<char> variables;
 
     KmapPanel(wxWindow* parent)
         : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(400, 400))
@@ -384,10 +396,11 @@ public:
         Bind(wxEVT_PAINT, &KmapPanel::OnPaint, this);
     }
 
-    void SetData(const vector<vector<bool>>& data, const vector<group>& g, int nVar) {
+    void SetData(const vector<vector<bool>>& data, const vector<group>& g, int nVar, const vector<char>& vari) {
         kmap = data;
         groups = g;
         slbien = nVar;
+        variables = vari;
         Refresh();
     }
 
@@ -422,13 +435,18 @@ public:
         }
 
         // Biến xác định Kmap
-        if (slbien == 2)
-            dc.DrawText("X | Y", startX - 35, startY - 30);
-        else if (slbien == 3)
-            dc.DrawText("X | YZ", startX - 40, startY - 30);
-        else if (slbien == 4)
-            dc.DrawText("XY | ZW", startX - 50, startY - 30);
-
+        if (slbien == 2) {
+            string var = string(1, variables[0]) + "|" + string(1, variables[1]);
+            dc.DrawText(wxString(var), startX - 35, startY - 30);
+        }
+        else if (slbien == 3) {
+            string var = string(1, variables[0]) + "|" + string(1, variables[1]) + string(1, variables[2]);
+            dc.DrawText(wxString(var), startX - 40, startY - 30);
+        }   
+        else if (slbien == 4) {
+            string var = string(1, variables[0]) + string(1, variables[1]) + "|" + string(1, variables[2]) + string(1, variables[3]);
+            dc.DrawText(wxString(var), startX - 50, startY - 30);
+        }
 
         // Nhãn hàng
         for (int i = 0; i < rows && i < (int)rowLabels.size(); i++) {
@@ -508,7 +526,8 @@ public:
 // Giao diện wxWidgets
 class MyFrame : public wxFrame {
 public:
-    KmapPanel* panelKmap;
+    KmapPanel* kmap_down;
+    KmapPanel* kmap_up;
 
     wxTextCtrl* o_nhap;
     wxTextCtrl* o_bieuthuc_rutgon;
@@ -522,8 +541,8 @@ public:
         wxBoxSizer* topsizer = new wxBoxSizer(wxHORIZONTAL);
         wxBoxSizer* leftsizer = new wxBoxSizer(wxVERTICAL);
 
-        // hình logo trường 
-        wxImage logotruong("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
+        //Logo trường
+        wxImage logotruong("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/LOGO.png", wxBITMAP_TYPE_PNG);            //Cập nhật lại path nếu PNG trong widget lỗi 
         if (logotruong.IsOk())
             logotruong = logotruong.Scale(100, 100, wxIMAGE_QUALITY_HIGH);
         else {
@@ -532,8 +551,8 @@ public:
         }
         wxStaticBitmap* o_logo = new wxStaticBitmap(panel, -1, wxBitmap(logotruong));
 
-        // danh sách thành viên nhóm 
-        wxImage dsthanhvien("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images/danhsachtv.png", wxBITMAP_TYPE_PNG);          //Cập nhật lại path nếu PNG trong widget lỗi 
+        //Tên thành viên nhóm
+        wxImage dsthanhvien("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/danhsachtv.png", wxBITMAP_TYPE_PNG);          //Cập nhật lại path nếu PNG trong widget lỗi 
         if (dsthanhvien.IsOk())
             dsthanhvien = dsthanhvien.Scale(480, 180, wxIMAGE_QUALITY_HIGH);
         else {
@@ -542,8 +561,8 @@ public:
         }
         wxStaticBitmap* o_danhsach = new wxStaticBitmap(panel, -1, wxBitmap(dsthanhvien));
 
-        // tên trường 
-        wxImage tentruong("C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08/Images/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
+        //Tên trường
+        wxImage tentruong("C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images/tentruongSPKT.png", wxBITMAP_TYPE_PNG);           //Cập nhật lại path nếu PNG trong widget lỗi 
         if (tentruong.IsOk())
             tentruong = tentruong.Scale(370, 70, wxIMAGE_QUALITY_HIGH);
         else {
@@ -552,28 +571,30 @@ public:
         }
         wxStaticBitmap* o_tentruong = new wxStaticBitmap(panel, -1, wxBitmap(tentruong));
 
-        // gộp tên trường + logo thành 1 khung theo trục ngang 
+        //Gộp tên trường + logo thành 1 khung theo trục ngang 
         wxBoxSizer* logo_tentruong_sizer = new wxBoxSizer(wxHORIZONTAL);
         logo_tentruong_sizer->Add(o_logo, 0, wxLEFT | wxTOP | wxALIGN_LEFT, 5);
         logo_tentruong_sizer->Add(o_tentruong, 0, wxLEFT | wxALIGN_TOP, 5);
 
-        // gộp tên trường + logo + danh sách vào 1 khung theo trục dọc 
+        //Gộp tên trường + logo + danh sách vào 1 khung theo trục dọc 
         leftsizer->Add(logo_tentruong_sizer, 0, wxALIGN_LEFT | wxALL, 0);
         leftsizer->Add(o_danhsach, 0, wxTOP | wxALIGN_LEFT, 5);
 
         wxBoxSizer* inputSizer = new wxBoxSizer(wxVERTICAL);
 
-        // ô nhập 
+        //Ô nhập
         wxBoxSizer* line1 = new wxBoxSizer(wxHORIZONTAL);
         line1->Add(new wxStaticText(panel, -1, "Nhap bieu thuc:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_nhap = new wxTextCtrl(panel, -1, "");
         line1->Add(o_nhap, 1, wxALL | wxEXPAND, 5);
         inputSizer->Add(line1, 0, wxEXPAND | wxALL, 5);
 
+        //Nút tính toán
         wxButton* nut = new wxButton(panel, -1, "Tinh toan");
         nut->Bind(wxEVT_BUTTON, &MyFrame::OnCalculate, this);
         inputSizer->Add(nut, 0, wxALIGN_CENTER | wxALL, 5);
 
+        //Ô in ra biểu thức rút gọn
         wxBoxSizer* line2 = new wxBoxSizer(wxHORIZONTAL);
         line2->Add(new wxStaticText(panel, -1, "Bieu thuc rut gon:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
         o_bieuthuc_rutgon = new wxTextCtrl(panel, -1, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
@@ -587,7 +608,7 @@ public:
 
         wxBoxSizer* mach_kmap_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-        // ô mạch logic + kmap
+        //Ô mạch logic
         wxBoxSizer* mach_sizer = new wxBoxSizer(wxVERTICAL);
         mach_sizer->Add(new wxStaticText(panel, -1, "Mach logic:"), 0, wxALL, 5);
         wxImage img(400, 300);
@@ -595,14 +616,24 @@ public:
         anh_mach = new wxStaticBitmap(panel, -1, wxBitmap(img));
         mach_sizer->Add(anh_mach, 1, wxEXPAND | wxALL, 10);
         mach_kmap_sizer->Add(mach_sizer, 1, wxEXPAND | wxALL, 5);
+        mainsizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 0);
+        
 
+        //Bảng kmap
         wxBoxSizer* kmap_sizer = new wxBoxSizer(wxVERTICAL);
-        kmap_sizer->Add(new wxStaticText(panel, -1, "Gom nhom K-map:"), 0, wxALL, 5);
-        panelKmap = new KmapPanel(panel);
-        kmap_sizer->Add(panelKmap, 0, wxALIGN_CENTER | wxALL, 10);
-        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxALL, 5);
+        kmap_sizer->Add(new wxStaticText(panel, -1, "K-map (Ban dau):"), 0, wxALIGN_TOP | wxLEFT, 0);
+        kmap_up = new KmapPanel(panel);
+        kmap_sizer->Add(kmap_up, 1, wxTOP, 0);
 
-        mainsizer->Add(mach_kmap_sizer, 1, wxEXPAND | wxALL, 10);
+        kmap_sizer->Add(new wxStaticText(panel, -1, "K-map (Sau khi rut gon):"), 0, wxALIGN_TOP | wxLEFT, 0);
+        kmap_down = new KmapPanel(panel);
+        kmap_sizer->Add(kmap_down, 1, wxTOP, 0);
+
+        panel->SetSizerAndFit(mainsizer);
+        mach_kmap_sizer->Add(kmap_sizer, 0, wxEXPAND | wxTOP, -100);
+
+
+        
 
         panel->SetSizer(mainsizer);
     }
@@ -611,16 +642,20 @@ public:
         string input = o_nhap->GetValue().ToStdString();
         xuly(input);
         auto kmap = biendoi_kmap(dsvitri);
+        // mới 
+        auto kmapSOP = biendoi_kmap(dsvitri);
+        kmap_up->SetData(kmapSOP, {}, slbien, dsbien); // không có nhóm, chỉ hiện 1/0
+        //
         auto groups = rutgon_kmap(kmap);
-        panelKmap->SetData(kmap, groups, slbien);
+        kmap_down->SetData(kmap, groups, slbien, dsbien);
 
         string ans = ChuoiBieuThuc(groups, slbien);
         o_bieuthuc_rutgon->SetValue(ans);
 
-        string exepath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\bin\\dot.exe)";
-        string dotpath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\circuit.dot)";
-        string pngpath = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\circuit.png)";
-        string pngfolder = R"(C:\\Users\\LeFat\\OneDrive\\Desktop\\DM-GT_PROJECT_GROUP_08\\Images)";
+        string exepath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/bin/dot.exe)";
+        string dotpath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/circuit.dot)";
+        string pngpath = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/circuit.png)";
+        string pngfolder = R"(C:/Users/LeFat/OneDrive/Desktop/DM-GT_PROJECT_GROUP_08/Images)";
 
         if (!makeDot(ans, dotpath, pngfolder)) {
             wxMessageBox("Khong the tao .dot!");
