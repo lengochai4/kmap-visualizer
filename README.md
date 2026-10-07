@@ -1,123 +1,120 @@
 # Boolean Minimization Visualizer & Logic Circuit Drawer (K-Map Tool)
-> **Đồ án cuối kỳ môn Toán rời rạc và Lý thuyết đồ thị (Discrete Mathematics and Graph Theory)**  
-> **Dự án môn học - Năm 2**  
-> **Trường Đại học Sư phạm Kỹ thuật TP.HCM (HCMUTE)** — *Viện Đào tạo Quốc tế (Faculty of International Education)*
+
+> **Final Term Project — Discrete Mathematics and Graph Theory**  
+> **Sophomore Year Project (Year 2)**  
+> **Ho Chi Minh City University of Technology and Education (HCMUTE)**  
+> *Faculty of International Education (FIE)*
 
 ---
 
-## 👥 Thành viên nhóm thực hiện (Nhóm 8)
+## 👥 Team Members — Group 8
 
-| STT | Họ và Tên | Mã số sinh viên (MSSV) | Vai trò |
+| No. | Full Name | Student ID | Role |
 | :---: | :--- | :---: | :--- |
-| 1 | **Lê Ngọc Hải** | `24110089` | Trưởng nhóm / Lập trình chính |
-| 2 | **Lê Huy Phát** | `24110118` | Thành viên |
-| 3 | **Huỳnh Lê Anh Tuấn** | `24110143` | Thành viên |
+| 1 | **Lê Ngọc Hải** | `24110089` | Team Leader / Core Developer |
+| 2 | **Lê Huy Phát** | `24110118` | Developer |
+| 3 | **Huỳnh Lê Anh Tuấn** | `24110143` | Developer |
 
 ---
 
-## 📌 Giới thiệu dự án
+## 📌 Project Overview
 
-Chương trình được phát triển nhằm mục đích trực quan hóa quá trình tối tiểu hóa hàm Boole bằng **bản đồ Karnaugh (Karnaugh Map - K-Map)** và tự động vẽ sơ đồ mạch logic tương ứng từ biểu thức tối tiểu.
+This project provides an interactive desktop GUI application to visualize the process of **Boolean function minimization using Karnaugh Maps (K-Maps)** and to automatically generate and display the corresponding **Boolean logic circuit diagram**.
 
-Phần mềm hỗ trợ:
-- Nhập biểu thức Boole dạng tổng các tích (SOP - Sum of Products).
-- Tự động phân tích biểu thức và trích xuất các biến logic.
-- Hiển thị bản đồ K-map gốc trước khi rút gọn (2, 3 và 4 biến).
-- Tìm kiếm các **Tế bào lớn (Prime Implicants - PI)** và **Tế bào lớn thiết yếu (Essential Prime Implicants - EPI)**.
-- Rút gọn biểu thức và khoanh nhóm trực quan trên bản đồ K-map với các màu sắc phân biệt (hỗ trợ hiển thị nhóm cuộn vòng biên - wrapping).
-- Liệt kê các trường hợp nghiệm rút gọn tối tiểu (Multiple minimal covers).
-- Tự động sinh mã Graphviz `.dot` và gọi `dot.exe` để vẽ sơ đồ mạch logic gồm các cổng AND, OR, NOT dưới dạng ảnh PNG hiển thị trực tiếp trên giao diện.
-
----
-
-## 🛠️ Công nghệ & Thư viện sử dụng
-
-- **Ngôn ngữ**: C++ (tiêu chuẩn **ISO C++17** trở lên).
-- **GUI Framework**: [wxWidgets](https://www.wxwidgets.org/) (phiên bản 3.x).
-- **Vẽ mạch logic**: [Graphviz](https://graphviz.org/) (`dot.exe` để render đồ thị logic sang PNG).
-- **IDE phát triển**: Microsoft Visual Studio 2022 (v143).
+### Key Features
+- **Expression Input**: Supports Sum-of-Products (SOP) Boolean expressions with negation (`-`) and logical OR (`+`).
+- **Dynamic Variable Detection**: Automatically identifies variables (supports 2, 3, and 4 variables).
+- **Dual K-Map Visualization**:
+  - **Initial K-Map**: Displays the raw truth-value distribution (`0` and `1`).
+  - **Minimization K-Map**: Highlights optimal cell groupings (Prime Implicants) with distinct semi-transparent colors and boundary wrapping (cylindrical and spherical wrap-around).
+- **Multiple Minimal Cover Enumeration**: Identifies Essential Prime Implicants (EPIs) and solves for all alternate minimal cover solutions (Case 1, Case 2, etc.).
+- **Automatic Circuit Drawing**: Uses **Graphviz** (`dot.exe`) under the hood to generate clean, orthographic logic circuit schematics (with AND, OR, NOT gate symbols) and renders them in real time within the application.
 
 ---
 
-## 🚀 Hướng dẫn cài đặt & Biên dịch
+## 🛠️ Technology Stack & Dependencies
 
-### 1. Yêu cầu hệ thống
-- Hệ điều hành: Windows 10/11 (x64).
-- Visual Studio 2022 (đã cài đặt workload *Desktop development with C++*).
-- Thư viện wxWidgets đã được build sẵn (khuyên dùng cấu hình `vc_x64_lib`).
-
-### 2. Thiết lập biến môi trường wxWidgets
-1. Tải và giải nén wxWidgets (ví dụ: `C:\wxWidgets-3.2.x`).
-2. Thiết lập biến môi trường hệ thống:
-   - Tên biến: `WXWIN`
-   - Giá trị: Đường dẫn tới thư mục wxWidgets (ví dụ: `C:\wxWidgets-3.2.x`).
-
-### 3. Cấu hình Project trong Visual Studio
-1. Mở file giải pháp: `Group8_FinalProject/Group8_FinalProject.sln`.
-2. Đảm bảo cấu hình là **Debug** hoặc **Release**, nền tảng **x64**.
-3. Kiểm tra các thuộc tính project:
-   - **C/C++ -> General -> Additional Include Directories**: `$(WXWIN)\include\msvc;$(WXWIN)\include;`
-   - **C/C++ -> Language -> C++ Language Standard**: `ISO C++17 Standard (/std:c++17)`.
-   - **Linker -> General -> Additional Library Directories**: `$(WXWIN)\lib\vc_x64_lib`.
-   - **Linker -> System -> SubSystem**: `Windows (/SUBSYSTEM:WINDOWS)`.
-4. Nhấn **Build Solution** (`Ctrl + Shift + B`).
-
-### 4. Tài nguyên cần thiết khi chạy chương trình
-Thư mục chứa file thực thi (`.exe`) cần có các thư mục con sau:
-- `bin/`: Chứa file thực thi `dot.exe` của Graphviz.
-- `Images/`: Chứa hình ảnh cổng logic (`AND.png`, `OR.png`, `NOT.png`), logo trường (`LOGO.png`, `tentruongSPKT.png`) và danh sách nhóm (`danhsachtv.png`).
+- **Language**: C++ (Compiled under **ISO C++17 Standard**).
+- **GUI Framework**: [wxWidgets](https://www.wxwidgets.org/) (Version 3.2+ recommended).
+- **Circuit Graph Renderer**: [Graphviz](https://graphviz.org/) (`dot.exe`).
+- **IDE & Toolset**: Microsoft Visual Studio 2022 (`v143` toolset, `x64`).
 
 ---
 
-## 📖 Hướng dẫn sử dụng
+## 🚀 Getting Started & Build Instructions
 
-1. **Nhập biểu thức**: Nhập biểu thức dạng SOP vào ô *Nhập biểu thức*.
-   - Ký tự phủ định sử dụng dấu trừ `-`, ví dụ: `-A B + A -B` hoặc `-(AB)`.
-   - Phép cộng logic sử dụng dấu `+`.
-2. **Tính toán**: Nhấn nút **Tính toán**.
-   - Bảng **K-map (Ban đầu)** hiển thị các giá trị `1` và `0` tương ứng trên bản đồ.
-   - Bảng **K-map (Sau khi rút gọn)** hiển thị các nhóm khoanh tế bào lớn với viền màu nổi bật.
-   - Hộp chọn **Biểu thức rút gọn** hiển thị các trường hợp tối tiểu (Case 1, Case 2,...).
-   - Ô **Mạch logic** hiển thị sơ đồ cổng logic tương ứng được render tự động.
-3. **Chuyển đổi nghiệm**: Nếu có nhiều trường hợp rút gọn tương đương, chọn từng Case trong danh sách để xem sơ đồ mạch và khoanh nhóm tương ứng.
+### 1. Prerequisites
+- Windows 10/11 (64-bit).
+- Visual Studio 2022 with the **Desktop development with C++** workload.
+- Pre-built wxWidgets library for MSVC (recommended directory: `vc_x64_lib`).
+
+### 2. Environment Setup
+1. Download and extract wxWidgets (e.g., `C:\wxWidgets-3.2.x`).
+2. Add a system environment variable:
+   - **Variable Name**: `WXWIN`
+   - **Variable Value**: Path to your wxWidgets root folder (e.g., `C:\wxWidgets-3.2.x`).
+
+### 3. Visual Studio Project Configuration
+1. Open the solution file: `Group8_FinalProject/Group8_FinalProject.sln`.
+2. Set configuration to **Debug** or **Release** on platform **x64**.
+3. Verify project properties:
+   - **C/C++ -> General -> Additional Include Directories**:  
+     `$(WXWIN)\include\msvc;$(WXWIN)\include;`
+   - **C/C++ -> Language -> C++ Language Standard**:  
+     `ISO C++17 Standard (/std:c++17)`
+   - **Linker -> General -> Additional Library Directories**:  
+     `$(WXWIN)\lib\vc_x64_lib`
+   - **Linker -> System -> SubSystem**:  
+     `Windows (/SUBSYSTEM:WINDOWS)`
+4. Build the project (`Ctrl + Shift + B`).
+
+### 4. Runtime Assets
+When running the built executable (`Group8_FinalProject.exe`), ensure the following assets reside in the executable's directory:
+- `bin/dot.exe`: Graphviz executable used to compile `.dot` scripts into PNG images.
+- `Images/`: Contains logic gate icons (`AND.png`, `OR.png`, `NOT.png`), university logos (`LOGO.png`, `tentruongSPKT.png`), and member credits (`danhsachtv.png`).
 
 ---
 
-## 📂 Cấu trúc thư mục dự án
+## 📖 User Guide
+
+1. **Input Boolean Expression**: Enter your expression into the *Nhap bieu thuc* text box.
+   - Use `-` preceding a variable for negation, e.g., `-A B + A -B` or `A B C + -A -B C`.
+   - Separate product terms using `+`.
+2. **Calculate**: Click the **Tinh toan** button.
+   - **K-map (Ban dau)**: Shows the un-grouped K-map.
+   - **K-map (Sau khi rut gon)**: Shows color-coded rectangular cell loops for Prime Implicants.
+   - **Bieu thuc rut gon**: Dropdown list containing minimized expressions.
+   - **Mach logic**: Graphically displays the generated logic gate circuit diagram.
+3. **Switch Cases**: If multiple minimal SOP expressions exist, select any case from the dropdown to view its corresponding groupings and circuit schematic.
+
+---
+
+## 📂 Project Directory Structure
 
 ```text
 DM-GT_PROJECT/
 │
-├── README.md                           # Tài liệu hướng dẫn dự án
-├── input project Kmap.cpp               # Mã nguồn C++ chính của chương trình
+├── README.md                           # Project documentation (English)
+├── .gitignore                          # Visual Studio and build output ignore rules
+├── input project Kmap.cpp               # Main C++ application source file
 │
-├── Group8_FinalProject/                # Thư mục Project Visual Studio
-│   ├── Group8_FinalProject.sln         # Solution file
-│   ├── Group8_FinalProject.vcxproj     # Project file C++
+├── Group8_FinalProject/                # Visual Studio Project directory
+│   ├── Group8_FinalProject.sln         # VS Solution
+│   ├── Group8_FinalProject.vcxproj     # VCXProj configuration
 │   ├── Group8_FinalProject.vcxproj.filters
-│   └── x64/Debug/                      # Thư mục thực thi & Debug
-│       ├── Group8_FinalProject.exe     # File chạy
-│       ├── bin/                        # Chứa Graphviz dot.exe
-│       │   └── dot.exe
-│       └── Images/                     # Tài nguyên hình ảnh, cổng logic, logo
-│           ├── AND.png
-│           ├── OR.png
-│           ├── NOT.png
-│           ├── LOGO.png
-│           ├── tentruongSPKT.png
-│           └── danhsachtv.png
+│   └── x64/Debug/                      # Output build & runtime assets
+│       ├── Group8_FinalProject.exe     # Executable binary
+│       ├── bin/                        # Graphviz binaries (dot.exe)
+│       └── Images/                     # Gate symbols, logos, team banner
 │
-└── [Khuyến nghị dọn dẹp]:
-    ├── circuit.png                     # (File ảnh tạm sinh ra trong lúc chạy)
-    ├── có bảng Kmap                    # (Bản thảo mã nguồn cũ không có phần mở rộng)
-    └── Group8_FinalProject/testlogic.cpp # (File trống 0 bytes)
+└── [Pending Cleanup]:
+    ├── circuit.png                     # Temporary runtime output image
+    ├── có bảng Kmap                    # Legacy source draft (missing extension)
+    └── Group8_FinalProject/testlogic.cpp # Empty placeholder file (0 bytes)
 ```
 
 ---
 
-## 📝 Đánh giá & Định hướng cải tiến
+## 📄 License & Acknowledgments
 
-- [ ] Chuẩn hóa cấu trúc thư mục (chuyển mã nguồn vào `src/`, tách tài nguyên dùng chung vào `assets/`).
-- [ ] Bổ sung bộ phân tích cú pháp biểu thức Boole mạnh mẽ hơn (hỗ trợ biến nhiều chữ số, kiểm tra dấu ngoặc, xử lý khoảng trắng).
-- [ ] Khắc phục các điểm bất cập logic trong thuật toán bao phủ và render đồ thị mạch.
-- [ ] Bổ sung tính năng tự động tìm kiếm Graphviz trên máy người dùng nếu không có sẵn file nội bộ.
+Developed by **Group 8** for the *Discrete Mathematics and Graph Theory* course at **Ho Chi Minh City University of Technology and Education (HCMUTE)**.
