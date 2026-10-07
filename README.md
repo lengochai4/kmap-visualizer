@@ -41,20 +41,33 @@ This project provides an interactive desktop GUI application to visualize the pr
 
 ---
 
-## 🚀 Getting Started & Build Instructions
+## 🚀 Getting Started & Execution
 
-### 1. Prerequisites
+### 🌟 Option 1: Instant Web Application (Zero-Setup, Recommended)
+**No compiler, C++, wxWidgets, or Graphviz installation needed!**
+- **Direct launch**: Double-click [`start_web.bat`](file:///e:/DM-GT_PROJECT/start_web.bat) or open [`index.html`](file:///e:/DM-GT_PROJECT/index.html) directly in any modern web browser (Google Chrome, Microsoft Edge, Firefox, Brave).
+- **Features**:
+  - Interactive K-Map (click any cell to toggle `0` ↔ `1` with real-time recalculation).
+  - High-resolution SVG logic circuit schematic (IEEE AND, OR, NOT gates).
+  - Color-coded group loops with cylindrical/torus wrap-around.
+  - Multi-case minimal cover viewer.
+
+---
+
+### 💻 Option 2: Desktop C++ Application (Visual Studio)
+
+#### 1. Prerequisites
 - Windows 10/11 (64-bit).
 - Visual Studio 2022 with the **Desktop development with C++** workload.
 - Pre-built wxWidgets library for MSVC (recommended directory: `vc_x64_lib`).
 
-### 2. Environment Setup
+#### 2. Environment Setup
 1. Download and extract wxWidgets (e.g., `C:\wxWidgets-3.2.x`).
 2. Add a system environment variable:
    - **Variable Name**: `WXWIN`
    - **Variable Value**: Path to your wxWidgets root folder (e.g., `C:\wxWidgets-3.2.x`).
 
-### 3. Visual Studio Project Configuration
+#### 3. Visual Studio Project Configuration
 1. Open the solution file: `Group8_FinalProject/Group8_FinalProject.sln`.
 2. Set configuration to **Debug** or **Release** on platform **x64**.
 3. Verify project properties:
@@ -68,7 +81,7 @@ This project provides an interactive desktop GUI application to visualize the pr
      `Windows (/SUBSYSTEM:WINDOWS)`
 4. Build the project (`Ctrl + Shift + B`).
 
-### 4. Runtime Assets
+#### 4. Runtime Assets
 When running the built executable (`Group8_FinalProject.exe`), ensure the following assets reside in the executable's directory:
 - `bin/dot.exe`: Graphviz executable used to compile `.dot` scripts into PNG images.
 - `Images/`: Contains logic gate icons (`AND.png`, `OR.png`, `NOT.png`), university logos (`LOGO.png`, `tentruongSPKT.png`), and member credits (`danhsachtv.png`).
@@ -78,9 +91,9 @@ When running the built executable (`Group8_FinalProject.exe`), ensure the follow
 ## 📖 User Guide
 
 1. **Input Boolean Expression**: Enter your expression into the *Nhap bieu thuc* text box.
-   - Use `-` preceding a variable for negation, e.g., `-A B + A -B` or `A B C + -A -B C`.
+   - Use `-` or `'` for negation, e.g., `-A B + A -B` or `A B C + -A -B C`.
    - Separate product terms using `+`.
-2. **Calculate**: Click the **Tinh toan** button.
+2. **Calculate**: Click the **Tinh toan** button (or **Rút gọn & Vẽ mạch** on Web).
    - **K-map (Ban dau)**: Shows the un-grouped K-map.
    - **K-map (Sau khi rut gon)**: Shows color-coded rectangular cell loops for Prime Implicants.
    - **Bieu thuc rut gon**: Dropdown list containing minimized expressions.
@@ -94,9 +107,18 @@ When running the built executable (`Group8_FinalProject.exe`), ensure the follow
 ```text
 DM-GT_PROJECT/
 │
+├── index.html                          # 🌐 Web Application Entry Point (Zero-setup)
+├── start_web.bat                       # ⚡ Double-click launcher for Web App
+├── css/
+│   └── style.css                       # Modern Dark Mode UI styling
+├── js/
+│   ├── kmap.js                         # K-Map & Boolean minimization engine (JS)
+│   ├── circuit.js                      # Interactive SVG logic circuit drawer
+│   └── app.js                          # UI event handlers & interactive grid
+│
 ├── README.md                           # Project documentation (English)
 ├── .gitignore                          # Visual Studio and build output ignore rules
-├── input project Kmap.cpp               # Main C++ application source file
+├── input project Kmap.cpp               # C++ native desktop source file
 │
 ├── Group8_FinalProject/                # Visual Studio Project directory
 │   ├── Group8_FinalProject.sln         # VS Solution
@@ -107,7 +129,7 @@ DM-GT_PROJECT/
 │       ├── bin/                        # Graphviz binaries (dot.exe)
 │       └── Images/                     # Gate symbols, logos, team banner
 │
-└── [Pending Cleanup]:
+└── [Legacy / Clutter]:
     ├── circuit.png                     # Temporary runtime output image
     ├── có bảng Kmap                    # Legacy source draft (missing extension)
     └── Group8_FinalProject/testlogic.cpp # Empty placeholder file (0 bytes)
