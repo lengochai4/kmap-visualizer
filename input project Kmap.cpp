@@ -1,4 +1,4 @@
-﻿#include <wx/wx.h>
+#include <wx/wx.h>
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 
@@ -40,61 +40,147 @@ struct group {
     set<pair<int, int>> cells; //Các nhóm bé hơn nằm trong nhóm này
 };
 
-//Chuyển một toán tử sang bit nhị phân
+//Chuyển một toán tử sang bit nhị phân an toàn
 string chuyendoi(const string& toantu)
 {
     string bits = "";
     bool phudinhchung = false;
-    for (int i = 0; i < toantu.length(); i++) {
-        if (toantu[i] == '(' && toantu[i - 1] == '-')
+    for (int i = 0; i < (int)toantu.length(); i++) {
+        if (i > 0 && toantu[i] == '(' && toantu[i - 1] == '-')
             phudinhchung = true;
 
         if (toantu[i] == ')')
             phudinhchung = false;
 
-        if (isalpha(toantu[i])) {
+        if (isalpha((unsigned char)toantu[i])) {
             if (phudinhchung) bits += "0";
             else {
-                if (i > 0) {
-                    if (toantu[i - 1] == '-') bits += "0";
-                    else bits += "1";
-                }
-                //i==0
-                else bits += "1";
+                int j = i - 1;
+                while (j >= 0 && isspace((unsigned char)toantu[j])) j--;
+                if (j >= 0 && (toantu[j] == '-' || toantu[j] == '~' || toantu[j] == '!'))
+                    bits += "0";
+                else
+                    bits += "1";
             }
         }
     }
     return bits;
 }
-//Tách chuỗi biểu thức thành từng toán tử và chuyển đổi bit, lưu vào dsvitri
+
+//Tách chuỗi biểu thức thành từng toán tử, tự động mở rộng các số hạng thiếu biến sang minterm
 void xuly(const string& bieuthuc) {
     slbien = 0;
     dsvitri.clear();
     vector<char> bien;
+
+    // Trích xuất danh sách biến duy nhất và chuẩn hóa chữ in hoa
     for (char c : bieuthuc) {
-        if (isalpha(c) && find(bien.begin(), bien.end(), c) == bien.end()) {
-            slbien++;
-            bien.push_back(c);
+        if (isalpha((unsigned char)c)) {
+            char u = (char)toupper((unsigned char)c);
+            if (find(bien.begin(), bien.end(), u) == bien.end()) {
+                bien.push_back(u);
+            }
+        }
+    }
+    sort(bien.begin(), bien.end());
+    slbien = (int)bien.size();
+    dsbien = bien;
+
+    // Đảm bảo tối thiểu 2 biến cho K-map
+    if (slbien < 2) {
+        if (slbien == 0) {
+            dsbien = { 'A', 'B' };
+            slbien = 2;
+        }
+        else if (slbien == 1) {
+            char extra = (dsbien[0] == 'A') ? 'B' : 'A';
+            dsbien.push_back(extra);
+            sort(dsbien.begin(), dsbien.end());
+            slbien = 2;
         }
     }
 
+    set<string> mintermSet;
     stringstream ss(bieuthuc);
     string toantu;
     while (getline(ss, toantu, '+'))
     {
-        if (!toantu.empty()) dsvitri.push_back(chuyendoi(toantu));
+        string tClean = toantu;
+        tClean.erase(remove_if(tClean.begin(), tClean.end(), ::isspace), tClean.end());
+        if (tClean.empty()) continue;
+
+        if (tClean == "1") {
+            int totalM = 1 << slbien;
+            for (int m = 0; m < totalM; ++m) {
+                string bits = "";
+                for (int k = 0; k < slbien; ++k) {
+                    bits += ((m >> (slbien - 1 - k)) & 1) ? "1" : "0";
+                }
+                mintermSet.insert(bits);
+            }
+            continue;
+        }
+        if (tClean == "0") continue;
+
+        // val[k]: 0 = phủ định, 1 = khẳng định, -1 = vắng mặt (don't care)
+        vector<int> val(slbien, -1);
+        bool phudinhchung = false;
+        for (int i = 0; i < (int)toantu.length(); i++) {
+            if (toantu[i] == '(' && i > 0 && toantu[i - 1] == '-')
+                phudinhchung = true;
+            else if (toantu[i] == ')')
+                phudinhchung = false;
+            else if (isalpha((unsigned char)toantu[i])) {
+                char varChar = (char)toupper((unsigned char)toantu[i]);
+                auto it = find(dsbien.begin(), dsbien.end(), varChar);
+                if (it != dsbien.end()) {
+                    int idx = (int)distance(dsbien.begin(), it);
+                    bool isNeg = phudinhchung;
+                    if (!isNeg) {
+                        int j = i - 1;
+                        while (j >= 0 && isspace((unsigned char)toantu[j])) j--;
+                        if (j >= 0 && (toantu[j] == '-' || toantu[j] == '~' || toantu[j] == '!'))
+                            isNeg = true;
+                    }
+                    val[idx] = isNeg ? 0 : 1;
+                }
+            }
+        }
+
+        // Mở rộng thành các minterm tương ứng
+        int totalM = 1 << slbien;
+        for (int m = 0; m < totalM; ++m) {
+            bool match = true;
+            for (int k = 0; k < slbien; ++k) {
+                int bit = (m >> (slbien - 1 - k)) & 1;
+                if (val[k] != -1 && val[k] != bit) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                string bits = "";
+                for (int k = 0; k < slbien; ++k) {
+                    bits += ((m >> (slbien - 1 - k)) & 1) ? "1" : "0";
+                }
+                mintermSet.insert(bits);
+            }
+        }
     }
-    dsbien = bien;
+
+    for (const string& mBits : mintermSet) {
+        dsvitri.push_back(mBits);
+    }
 }
 
 //BIẾN ĐỔI SANG KMAP
-//Chuyển từ bit sang vị trí trong mảng 2 chiều
+//Chuyển từ bit sang vị trí trong mảng 2 chiều (Gray code)
 int vitri(const string& bit) {
     static vector<string> bits2 = { "00","01","11","10" };
     if (bit.size() == 1)
         return (bit == "1") ? 1 : 0;
     if (bit.size() == 2) {
-        for (int i = 0; i < bits2.size(); i++)
+        for (int i = 0; i < (int)bits2.size(); i++)
             if (bit == bits2[i]) return i;
     }
     return -1;
@@ -108,14 +194,11 @@ vector<vector<bool>> biendoi_kmap(const vector<string>& dsvitri) {
     vector<vector<bool>> kmap(row, vector<bool>(col, false));
 
     for (const string& x : dsvitri) {
-        int r, c;
-        if (chiadoi == 0)  r = 0;
-        else r = vitri(x.substr(0, chiadoi));
+        int r = (chiadoi == 0) ? 0 : vitri(x.substr(0, chiadoi));
+        int c = ((slbien - chiadoi) == 0) ? 0 : vitri(x.substr(chiadoi));
 
-        if ((slbien - chiadoi) == 0) c = 0;
-        else c = vitri(x.substr(chiadoi));
-
-        if (r >= 0 && c >= 0) kmap[r][c] = true;
+        if (r >= 0 && r < row && c >= 0 && c < col)
+            kmap[r][c] = true;
     }
     return kmap;
 }
@@ -223,7 +306,7 @@ vector<string> Bits2 = { "00","01","11","10" };
 string vitrisangbit(int index, int bitlength) {
     if (bitlength == 0) return "";
     if (bitlength == 1) return (index == 0) ? "0" : "1";
-    if (bitlength == 2) return Bits2[index];
+    if (bitlength == 2 && index >= 0 && index < (int)Bits2.size()) return Bits2[index];
     return "";
 }
 
@@ -375,7 +458,7 @@ static vector<vector<int>> timbaophumin(const vector<int>& vitrio1_chuaphu, cons
     vector<vector<int>> solutions;
     pair<int, int> totnhat = { INT_MAX, INT_MAX };
 
-    int R = vitripiconlai.size();
+    int R = (int)vitripiconlai.size();
 
     uint32_t total = (R >= 31) ? 0u : (1u << R);
     for (uint32_t mask = 0; mask < total; ++mask) {
@@ -383,24 +466,30 @@ static vector<vector<int>> timbaophumin(const vector<int>& vitrio1_chuaphu, cons
         if (cnt > totnhat.first) continue;
 
         bool ok = true;
-        for (int oi : vitripiconlai) {
+        // Duyệt qua tất cả các ô 1 chưa được phủ để kiểm tra xem đã được phủ bởi mask chưa
+        for (int oi : vitrio1_chuaphu) {
             bool covered = false;
-            for (int b = 0; b < R; ++b)
+            for (int b = 0; b < R; ++b) {
                 if (mask & (1u << b)) {
                     int piIdx = vitripiconlai[b];
                     if (find(baophu[oi].begin(), baophu[oi].end(), piIdx) != baophu[oi].end()) {
-                        covered = true; break;
+                        covered = true;
+                        break;
                     }
                 }
+            }
             if (!covered) {
-                ok = false; break;
+                ok = false;
+                break;
             }
         }
         if (!ok) continue;
 
         vector<int> choose;
-        for (int b = 0; b < R; ++b) if (mask & (1u << b))
-            choose.push_back(vitripiconlai[b]);
+        for (int b = 0; b < R; ++b) {
+            if (mask & (1u << b))
+                choose.push_back(vitripiconlai[b]);
+        }
 
         auto cst = soluongtoantu(choose, PIs, soluongbien);
         if (cst < totnhat) {
@@ -429,24 +518,18 @@ static vector<PIbaoquat> buildtatcadapan(const vector<vector<bool>>& kmap, const
     auto cover = tablebaophu(ones, PIs);
     auto sp = CatEPI(PIs, ones, cover);
 
-    //Tất cả được EPI phủ, trả về chính nó
+    // Tất cả ô 1 đã được EPI phủ, trả về nghiệm tối tiểu duy nhất
     if (sp.vitri_o1_chuaphu.empty()) {
         vector<group> chosen;
         for (int e : sp.vitri_epi) chosen.push_back(PIs[e]);
         string expr = chuoibieuthuc(chosen, soluongbien);
         out.push_back({ chosen, expr });
-        vector<int> nonEPI = sp.vitri_pi_conlai;
-        for (int pi : nonEPI) {
-            vector<group> newChosen = chosen;
-            newChosen.push_back(PIs[pi]);
-            string expr2 = chuoibieuthuc(newChosen, soluongbien);
-            out.push_back({ newChosen, expr2 });
-        }
         return out;
     }
+
     auto themnhom = timbaophumin(sp.vitri_o1_chuaphu, sp.vitri_pi_conlai, cover, PIs, soluongbien);
 
-    //Lắp thành nghiệm đầy đủ 
+    // Lắp các tổ hợp tối tiểu đầy đủ
     for (auto& nhomchon : themnhom) {
         vector<group> nhomdachon;
         for (int e : sp.vitri_epi) nhomdachon.push_back(PIs[e]);
@@ -454,21 +537,18 @@ static vector<PIbaoquat> buildtatcadapan(const vector<vector<bool>>& kmap, const
 
         string expr = chuoibieuthuc(nhomdachon, soluongbien);
         out.push_back({ nhomdachon, expr });
+    }
 
-        // Thêm từng non essential để lấy các term phụ
-        vector<int> pichuaphu;
-        for (int pi : sp.vitri_pi_conlai) {
-            if (find(nhomchon.begin(), nhomchon.end(), pi) == nhomchon.end())
-                pichuaphu.push_back(pi);
-        }
-        for (int pi : pichuaphu) {
-            vector<group> nhommoi = nhomdachon;
-            nhommoi.push_back(PIs[pi]);
-            string expr2 = chuoibieuthuc(nhommoi, soluongbien);
-            out.push_back({ nhommoi, expr2 });
+    // Loại bỏ các trường hợp biểu thức trùng lặp
+    vector<PIbaoquat> uniqueOut;
+    set<string> seenExpr;
+    for (const auto& sol : out) {
+        if (seenExpr.find(sol.bieuthuc) == seenExpr.end()) {
+            seenExpr.insert(sol.bieuthuc);
+            uniqueOut.push_back(sol);
         }
     }
-    return out;
+    return uniqueOut;
 }
 
 //RENDER SANG HÌNH ẢNH
@@ -502,36 +582,53 @@ bool makeDot(string expr, string dotf, string pngf) {
     f << "rankdir=LR; splines=ortho; nodesep=0.6; ranksep=0.8;\n";
     f << "node[fontsize=10, style=filled, fillcolor=white];\n";
 
+    // Xử lý trường hợp biểu thức là hằng số 0 hoặc 1
+    string exprClean = expr;
+    exprClean.erase(remove_if(exprClean.begin(), exprClean.end(), ::isspace), exprClean.end());
+    if (exprClean == "0") {
+        f << "ZERO[shape=circle, label=\"0\", fillcolor=\"#D3D3D3\"];\n";
+        f << "F[shape=doublecircle, label=\"F\", fillcolor=\"#FFA07A\"];\n";
+        f << "ZERO -> F;\n";
+        f << "}\n";
+        f.close();
+        return true;
+    }
+    if (exprClean == "1") {
+        f << "ONE[shape=circle, label=\"1\", fillcolor=\"#D3D3D3\"];\n";
+        f << "F[shape=doublecircle, label=\"F\", fillcolor=\"#FFA07A\"];\n";
+        f << "ONE -> F;\n";
+        f << "}\n";
+        f.close();
+        return true;
+    }
+
     for (char var : dsbien)
         f << var << "[shape=circle, label=\"" << var << "\", fillcolor=\"#DDA0DD\"];\n";
 
     int cNOT = 0, cAND = 0;
     auto daychuoi = tachchuoi(expr, '+');
-    vector<string> ANDs;
+    vector<string> termOutputs;
 
     for (auto& t : daychuoi) {
         t.erase(remove_if(t.begin(), t.end(), ::isspace), t.end());
         if (t.empty()) continue;
 
-        // thêm đếm biến
         int sobien = 0;
         for (char c : t)
-            if (isalpha(c)) sobien++;
+            if (isalpha((unsigned char)c)) sobien++;
+
+        if (sobien == 0) continue;
 
         string target;
-
         if (sobien > 1) {
             cAND++;
             string aN = "A" + to_string(cAND);
-            f << aN << "[shape=none,image=\"" << pngf << "/AND.png\","
+            f << aN << "[shape=none, image=\"" << pngf << "/AND.png\","
                 " label=\"\", imagescale=true, fixedsize=true, width=0.5, height=0.5, margin=0];\n";
             target = aN;
         }
-        else {
-            target = "OR";
-        }
 
-        for (int i = 0; i < t.size(); i++) {
+        for (int i = 0; i < (int)t.size(); i++) {
             char c = t[i];
             if (c == '-') continue;
             string var(1, c);
@@ -539,30 +636,46 @@ bool makeDot(string expr, string dotf, string pngf) {
             if (i > 0 && t[i - 1] == '-') {
                 cNOT++;
                 string nN = "N" + to_string(cNOT);
-                f << nN << "[shape=none,image=\"" << pngf << "/NOT.png\","
-                    "label = \"\", imagescale=true, fixedsize=true, width=0.6, height=0.6, margin=0];\n";
-                f << var << "->" << nN << ";\n";
-                f << nN << "->" << target << ";\n";
+                f << nN << "[shape=none, image=\"" << pngf << "/NOT.png\","
+                    " label=\"\", imagescale=true, fixedsize=true, width=0.6, height=0.6, margin=0];\n";
+                f << var << " -> " << nN << ";\n";
+                if (sobien > 1) {
+                    f << nN << " -> " << target << ";\n";
+                }
+                else {
+                    target = nN;
+                }
             }
             else {
-                f << var << "->" << target << ";\n";
+                if (sobien > 1) {
+                    f << var << " -> " << target << ";\n";
+                }
+                else {
+                    target = var;
+                }
             }
         }
 
-        if (sobien > 1)
-            ANDs.push_back(target);
+        termOutputs.push_back(target);
     }
 
-    if (ANDs.size() == 1) {
-        f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
-        f << ANDs[0] << "->F;\n";
+    if (termOutputs.empty()) {
+        f << "ZERO[shape=circle, label=\"0\", fillcolor=\"#D3D3D3\"];\n";
+        f << "F[shape=doublecircle, label=\"F\", fillcolor=\"#FFA07A\"];\n";
+        f << "ZERO -> F;\n";
+    }
+    else if (termOutputs.size() == 1) {
+        f << "F[shape=doublecircle, label=\"F\", fillcolor=\"#FFA07A\"];\n";
+        f << termOutputs[0] << " -> F;\n";
     }
     else {
-        f << "OR[shape=none,image=\"" << pngf << "/OR.png\","
-            "label = \"\", imagescale=true, fixedsize=true, width=0.5, height=0.5, margin=0];\n";
-        for (auto& x : ANDs) f << x << "->OR;\n";
-        f << "F[shape=doublecircle,label=\"F\",fillcolor=\"#FFA07A\"];\n";
-        f << "OR->F;\n";
+        f << "OR[shape=none, image=\"" << pngf << "/OR.png\","
+            " label=\"\", imagescale=true, fixedsize=true, width=0.5, height=0.5, margin=0];\n";
+        for (const auto& tNode : termOutputs) {
+            f << tNode << " -> OR;\n";
+        }
+        f << "F[shape=doublecircle, label=\"F\", fillcolor=\"#FFA07A\"];\n";
+        f << "OR -> F;\n";
     }
 
     f << "}\n";
@@ -587,11 +700,11 @@ bool doGraph(const string& exe, const string& dotf, const string& pngf) {
     BOOL ok = CreateProcessA(NULL, buf.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     if (!ok) {
-        cerr << "Tao tien trinh that bai,loi! " << GetLastError() << endl;
+        cerr << "Tao tien trinh that bai, loi! " << GetLastError() << endl;
         return false;
     }
 
-    WaitForSingleObject(pi.hProcess, INFINITE);
+    WaitForSingleObject(pi.hProcess, 5000); // 5s timeout chống treo ứng dụng
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     return kiemtrafiletontai(pngf);
@@ -711,33 +824,51 @@ public:
                 dc.SetPen(wxPen(col, 3, wxPENSTYLE_SOLID));
                 dc.SetBrush(wxBrush(col, wxBRUSHSTYLE_TRANSPARENT));
 
-                int x = startX + g.startcol * cellSize;
-                int y = startY + g.startrow * cellSize;
-                int w = g.colsize * cellSize;
-                int h = g.rowsize * cellSize;
-
                 int rows = kmap.size();
                 int cols = kmap[0].size();
 
-                bool wrapRow = (g.startrow + g.rowsize > rows);
-                bool wrapCol = (g.startcol + g.colsize > cols);
-
-                if (!wrapRow && !wrapCol) {
-                    dc.DrawRoundedRectangle(x, y, w, h, 15);
+                vector<pair<int, int>> rowIntervals;
+                if (g.startrow + g.rowsize <= rows) {
+                    rowIntervals.push_back({ g.startrow, g.rowsize });
                 }
                 else {
-                    if (wrapCol)
-                        dc.DrawRoundedRectangle(startX, y, (g.startcol + g.colsize - cols) * cellSize, h, 15);
-                    if (wrapRow)
-                        dc.DrawRoundedRectangle(x, startY, w, (g.startrow + g.rowsize - rows) * cellSize, 15);
-                    dc.DrawRoundedRectangle(x % (cols * cellSize), y % (rows * cellSize),
-                        min(w, cols * cellSize), min(h, rows * cellSize), 15);
+                    rowIntervals.push_back({ g.startrow, rows - g.startrow });
+                    rowIntervals.push_back({ 0, g.startrow + g.rowsize - rows });
+                }
+
+                vector<pair<int, int>> colIntervals;
+                if (g.startcol + g.colsize <= cols) {
+                    colIntervals.push_back({ g.startcol, g.colsize });
+                }
+                else {
+                    colIntervals.push_back({ g.startcol, cols - g.startcol });
+                    colIntervals.push_back({ 0, g.startcol + g.colsize - cols });
+                }
+
+                for (const auto& rInt : rowIntervals) {
+                    for (const auto& cInt : colIntervals) {
+                        int rx = startX + cInt.first * cellSize;
+                        int ry = startY + rInt.first * cellSize;
+                        int rw = cInt.second * cellSize;
+                        int rh = rInt.second * cellSize;
+                        dc.DrawRoundedRectangle(rx, ry, rw, rh, 15);
+                    }
                 }
                 colorIndex++;
             }
         }
     }
 };
+static wxString TimAsset(const wxString& exedir, const wxString& relativePath) {
+    if (wxFileExists(exedir + "/" + relativePath) || wxDirExists(exedir + "/" + relativePath))
+        return exedir + "/" + relativePath;
+    if (wxFileExists(exedir + "/../x64/Debug/" + relativePath) || wxDirExists(exedir + "/../x64/Debug/" + relativePath))
+        return exedir + "/../x64/Debug/" + relativePath;
+    if (wxFileExists(exedir + "/x64/Debug/" + relativePath) || wxDirExists(exedir + "/x64/Debug/" + relativePath))
+        return exedir + "/x64/Debug/" + relativePath;
+    return exedir + "/" + relativePath;
+}
+
 // Giao diện wxWidgets
 class MyFrame : public wxFrame {
 public:
@@ -754,7 +885,7 @@ public:
         wxPanel* panel = new wxPanel(this);
         wxStandardPaths& path = wxStandardPaths::Get();
         wxString exedir = wxFileName(path.GetExecutablePath()).GetPath();
-        wxString imgdir = exedir + "/Images";
+        wxString imgdir = TimAsset(exedir, "Images");
 
         wxBoxSizer* mainsizer = new wxBoxSizer(wxVERTICAL);
         wxBoxSizer* topsizer = new wxBoxSizer(wxHORIZONTAL);
@@ -878,57 +1009,22 @@ public:
         if (!allSolutions.empty()) {
             o_bieuthuc_rutgon->SetSelection(0);
         }
+        else {
+            o_bieuthuc_rutgon->Append("Case 1: 0");
+            o_bieuthuc_rutgon->SetSelection(0);
+            cacbieuthucrutgon.push_back("0");
+        }
 
         auto kmapSOP = biendoi_kmap(dsvitri);
         kmap_up->SetData(kmapSOP, {}, slbien, dsbien);
-
-        if (!allSolutions.empty()) {
-            const auto& sel = allSolutions[0];
-
-            kmap_down->SetData(kmap, sel.dachon, slbien, dsbien);
-
-            // Render mạch theo biểu thức ban đầu
-            wxStandardPaths& path = wxStandardPaths::Get();
-            wxString _Exepath = path.GetExecutablePath();
-            wxFileName filename(_Exepath);
-            wxString exedir = filename.GetPath();
-
-            wxString exe = exedir + "/bin/dot.exe";
-            wxString pngf = exedir + "/Images";
-            wxString dotF = exedir + "/circuit.dot";
-            wxString pngF = exedir + "/circuit.png";
-
-            string exepath = string(exe.mb_str());
-            string pngfolder = string(pngf.mb_str());
-            string dotpath = string(dotF.mb_str());
-            string pngpath = string(pngF.mb_str());
-
-            if (makeDot(sel.bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
-                wxImage img(pngpath);
-                if (img.IsOk()) {
-                    img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
-                    anh_mach->SetBitmap(wxBitmap(img));
-                    anh_mach->Refresh();
-                }
-            }
-        }
-    }
-
-    void OnSelectExpression(wxCommandEvent&) {
-        int idx = o_bieuthuc_rutgon->GetSelection();
-        if (idx == wxNOT_FOUND || idx >= (int)allSolutions.size()) return;
-
-        auto kmap = biendoi_kmap(dsvitri);
-
-        kmap_down->SetData(kmap, allSolutions[idx].dachon, slbien, dsbien);
 
         wxStandardPaths& path = wxStandardPaths::Get();
         wxString _Exepath = path.GetExecutablePath();
         wxFileName filename(_Exepath);
         wxString exedir = filename.GetPath();
 
-        wxString exe = exedir + "/bin/dot.exe";
-        wxString pngf = exedir + "/Images";
+        wxString exe = TimAsset(exedir, "bin/dot.exe");
+        wxString pngf = TimAsset(exedir, "Images");
         wxString dotF = exedir + "/circuit.dot";
         wxString pngF = exedir + "/circuit.png";
 
@@ -937,7 +1033,51 @@ public:
         string dotpath = string(dotF.mb_str());
         string pngpath = string(pngF.mb_str());
 
-        if (makeDot(allSolutions[idx].bieuthuc, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
+        string bthucVe = allSolutions.empty() ? "0" : allSolutions[0].bieuthuc;
+        vector<group> nhomVe = allSolutions.empty() ? vector<group>{} : allSolutions[0].dachon;
+        kmap_down->SetData(kmap, nhomVe, slbien, dsbien);
+
+        if (makeDot(bthucVe, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
+            wxImage img(pngpath);
+            if (img.IsOk()) {
+                img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
+                anh_mach->SetBitmap(wxBitmap(img));
+                anh_mach->Refresh();
+            }
+        }
+    }
+
+    void OnSelectExpression(wxCommandEvent&) {
+        int idx = o_bieuthuc_rutgon->GetSelection();
+        if (idx == wxNOT_FOUND) return;
+
+        auto kmap = biendoi_kmap(dsvitri);
+        string bthucVe = "0";
+        vector<group> nhomVe;
+
+        if (idx < (int)allSolutions.size()) {
+            bthucVe = allSolutions[idx].bieuthuc;
+            nhomVe = allSolutions[idx].dachon;
+        }
+
+        kmap_down->SetData(kmap, nhomVe, slbien, dsbien);
+
+        wxStandardPaths& path = wxStandardPaths::Get();
+        wxString _Exepath = path.GetExecutablePath();
+        wxFileName filename(_Exepath);
+        wxString exedir = filename.GetPath();
+
+        wxString exe = TimAsset(exedir, "bin/dot.exe");
+        wxString pngf = TimAsset(exedir, "Images");
+        wxString dotF = exedir + "/circuit.dot";
+        wxString pngF = exedir + "/circuit.png";
+
+        string exepath = string(exe.mb_str());
+        string pngfolder = string(pngf.mb_str());
+        string dotpath = string(dotF.mb_str());
+        string pngpath = string(pngF.mb_str());
+
+        if (makeDot(bthucVe, dotpath, pngfolder) && doGraph(exepath, dotpath, pngpath)) {
             wxImage img(pngpath);
             if (img.IsOk()) {
                 img.Rescale(1100, 600, wxIMAGE_QUALITY_HIGH);
