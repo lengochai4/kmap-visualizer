@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Map Visualizer & Circuit Drawer | Group 8 - HCMUTE</title>
+    <meta name="description" content="Trực quan hóa quá trình rút gọn hàm Boole bằng bản đồ Karnaugh (K-map) và tự động vẽ sơ đồ mạch logic IEEE thời gian thực. Đồ án Toán rời rạc & Lý thuyết đồ thị - Nhóm 8, HCMUTE.">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <img src="images/LOGO.png" alt="HCMUTE Logo" class="brand-logo-img">
+            <div class="brand-info">
+                <h1>K-Map Visualizer & Circuit Drawer</h1>
+                <p>HCMUTE — Faculty of International Education (FIE)</p>
+            </div>
+        </div>
+
+        <div class="nav-meta">
+            <span class="badge-tag">Nhóm 8 • Discrete Math</span>
+            <button id="btn-credits" class="btn-credits">👥 Thành viên nhóm</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="app-container">
+        
+        <!-- Left Panel: Input & Minimization Controls -->
+        <section class="controls-column">
+            
+            <!-- Input Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">⚙️</span> Nhập biểu thức Boole
+                    </h2>
+                    <select id="num-vars-select" class="sample-chip" style="background:#1e293b; color:#fff; font-weight:600; cursor:pointer;">
+                        <option value="2">2 Biến (A, B)</option>
+                        <option value="3" selected>3 Biến (A, B, C)</option>
+                        <option value="4">4 Biến (A, B, C, D)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="expr-input">
+                        <span>Biểu thức dạng SOP (Tổng các tích)</span>
+                        <span style="font-weight:400; font-size:0.75rem;">Phủ định: <code>-A</code> hoặc <code>A'</code></span>
+                    </label>
+                    <div class="input-box-wrapper">
+                        <input type="text" id="expr-input" class="expression-input" placeholder="Ví dụ: A B + -A C hoặc A B C + -A -B" value="A B + -A C" autocomplete="off" spellcheck="false">
+                        <button id="btn-clear" class="btn-clear-input" title="Xóa dữ liệu">✕</button>
+                    </div>
+                </div>
+
+                <!-- Virtual Keypad for convenient input -->
+                <div class="virtual-keyboard">
+                    <button class="btn-key" data-val="A">A</button>
+                    <button class="btn-key" data-val="B">B</button>
+                    <button class="btn-key" data-val="C">C</button>
+                    <button class="btn-key" data-val="D">D</button>
+                    <button class="btn-key op" data-val="-">-</button>
+                    <button class="btn-key op" data-val=" + ">+</button>
+                    <button class="btn-key op" data-val="backspace">⌫</button>
+                </div>
+
+                <!-- Action Button -->
+                <button id="btn-solve" class="btn-primary">
+                    <span>⚡</span> Rút gọn & Vẽ mạch
+                </button>
+
+                <!-- Quick Preset Samples -->
+                <div class="control-group">
+                    <span class="control-label">Mẫu biểu thức nhanh:</span>
+                    <div class="samples-wrapper">
+                        <button class="sample-chip" data-vars="2" data-expr="A B + -A B">2 Biến: AB + A'B</button>
+                        <button class="sample-chip" data-vars="3" data-expr="A B + -A C">3 Biến: AB + A'C</button>
+                        <button class="sample-chip" data-vars="3" data-expr="-A -B C + A -B C + A B -C + A B C">3 Biến (4 minterm)</button>
+                        <button class="sample-chip" data-vars="4" data-expr="A B C D + -A -B -C -D + B -C D">4 Biến: 4 Góc & Cột</button>
+                        <button class="sample-chip" data-vars="4" data-expr="-A -B -C -D + -A -B -C D + -A -B C -D + -A -B C D">4 Biến: Hàng 1</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">📊</span> Kết quả rút gọn tối tiểu
+                    </h2>
+                </div>
+
+                <div class="result-box">
+                    <div class="result-row">
+                        <span class="control-label">Các trường hợp tối tiểu (Cases):</span>
+                        <div id="cases-container" class="cases-select-wrapper">
+                            <!-- Dynamic Case pills rendered here -->
+                        </div>
+                    </div>
+
+                    <div id="equation-display" class="equation-display">
+                        F = A B + -A C
+                    </div>
+                </div>
+
+                <!-- Prime Implicants List -->
+                <div class="control-group">
+                    <span class="control-label">Tế bào lớn (Prime Implicants - PI):</span>
+                    <div id="pi-container" class="implicants-list">
+                        <!-- Dynamic PIs chips rendered here -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Panel: Visualizer (K-Map Grid & Circuit Diagram) -->
+        <section class="visualizer-column">
+            
+            <!-- K-Map Grid Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">🗺️</span> Bản đồ Karnaugh (K-Map)
+                    </h2>
+                    <div class="kmap-tabs">
+                        <div class="kmap-tab active" data-tab="minimized">Khoanh nhóm rút gọn</div>
+                        <div class="kmap-tab" data-tab="initial">Bản đồ giá trị gốc</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 0.8rem; color: var(--text-muted); display:flex; justify-content:space-between;">
+                    <span>💡 <i>Mẹo: Bạn có thể nhấp trực tiếp vào ô bất kỳ trên bảng để đổi giá trị 0 ↔ 1</i></span>
+                </div>
+
+                <div id="kmap-container" class="kmap-view-container">
+                    <!-- Dynamic K-Map Table rendered here -->
+                </div>
+            </div>
+
+            <!-- Logic Circuit Diagram Card -->
+            <div class="card circuit-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">⚡</span> Sơ đồ mạch logic (IEEE Gates Vector SVG)
+                    </h2>
+                    <span class="badge-tag" style="font-size:0.75rem;">Vector Rendering</span>
+                </div>
+
+                <div class="circuit-canvas-wrapper">
+                    <svg id="circuit-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Modal Credits / Team Info -->
+    <div id="modal-credits" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <img src="images/LOGO.png" alt="HCMUTE" style="height:48px; width:auto;">
+                    <div>
+                        <h3 class="card-title" style="font-size:1.05rem;">Trường ĐH Sư phạm Kỹ thuật TP.HCM</h3>
+                        <p style="font-size:0.75rem; color:var(--text-muted);">Viện Đào tạo Quốc tế (Faculty of International Education)</p>
+                    </div>
+                </div>
+                <button id="modal-close" class="modal-close">&times;</button>
+            </div>
+            
+            <p style="font-size:0.9rem; color:var(--text-muted);">
+                Đồ án cuối kỳ môn <b>Toán rời rạc và Lý thuyết đồ thị (Discrete Mathematics and Graph Theory)</b> — Năm 2.
+            </p>
+
+            <table class="members-table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Họ và Tên</th>
+                        <th>MSSV</th>
+                        <th>Vai trò</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><b>Lê Ngọc Hải</b></td>
+                        <td><code>24110089</code></td>
+                        <td>Trưởng nhóm / Core Dev</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><b>Lê Huy Phát</b></td>
+                        <td><code>24110118</code></td>
+                        <td>Thành viên</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><b>Huỳnh Lê Anh Tuấn</b></td>
+                        <td><code>24110143</code></td>
+                        <td>Thành viên</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="font-size:0.8rem; color:var(--text-dim); text-align:center;">
+                Phiên bản Web độc lập (Zero-setup HTML5/CSS3/JavaScript)
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        © 2026 Discrete Mathematics & Graph Theory Project • Group 8 • HCMUTE Faculty of International Education
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/kmap.js"></script>
+    <script src="js/circuit.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
